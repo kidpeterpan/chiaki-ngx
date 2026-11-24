@@ -1,0 +1,7 @@
+#!/bin/sh
+# AppImage entry point: make bundled models/dictionary discoverable and keep
+# the translator's optional ONNX Runtime library on the loader path.
+HERE="$(dirname "$(readlink -f "$0")")"
+export CHIAKI_TRANSLATOR_ASSETS="${CHIAKI_TRANSLATOR_ASSETS:-$HERE/usr/share/chiaki-ng/translator}"
+export LD_LIBRARY_PATH="$HERE/usr/lib:$HERE/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+exec "$HERE/usr/bin/chiaki" "$@"

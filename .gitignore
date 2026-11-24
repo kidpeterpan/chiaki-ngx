@@ -39,3 +39,29 @@ chiaki.conf
 .cache/
 *.vscode
 site/
+
+# local development/reference dirs
+/refs/
+/.tools/
+/build*/
+
+# generated translator assets
+/assets/dict/jmdict.db
+/AppDir/
+/*.AppImage
+/build-gui*/
+/build-core*/
+/build-deck*/
+/build-appimage*/
+
+# python
+__pycache__/
+*.pyc
+
+# optional offline model (not redistributed)
+/assets/models/nllb/
+
+# crash dumps from emulation
+core
+core.*
+*.core

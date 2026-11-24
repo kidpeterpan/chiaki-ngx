@@ -21,6 +21,9 @@
 #endif
 
 class SystemdInhibit;
+#ifdef CHIAKI_ENABLE_TRANSLATOR
+class TranslatorManager;
+#endif
 #ifdef Q_OS_MACOS
     class MacWakeSleep;
 #elif defined(Q_OS_WINDOWS)
@@ -285,6 +288,9 @@ private:
 
     Settings *settings = {};
     QmlSettings *settings_qml = {};
+#ifdef CHIAKI_ENABLE_TRANSLATOR
+    TranslatorManager *translator = {};
+#endif
     QmlMainWindow *window = {};
     StreamSession *session = {};
     QThread *frame_thread = {};

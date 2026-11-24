@@ -1,0 +1,567 @@
+// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+// In-viewport translator UI. Deliberately a child of the stream view rather
+// than a separate window so Gamescope keeps the game focused.
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import QtQuick.Window
+
+import org.streetpea.chiaking
+
+Item {
+    id: root
+
+    anchors.fill: parent
+    z: 900
+    focus: false
+
+    property bool settingsOpen: false
+    property bool dictionaryOpen: false
+
+    function openDictionaryIfNeeded() {
+        dictionaryOpen = Translator.dictionaryEntries.length > 0
+    }
+
+    Connections {
+        target: Translator
+        function onDictionaryEntriesChanged() {
+            root.dictionaryOpen = Translator.dictionaryEntries.length > 0
+        }
+    }
+
+    Connections {
+        target: Chiaki
+        function onSessionChanged() {
+            if (Chiaki.session && Translator.enabled)
+                Translator.prepare()
+        }
+    }
+
+    Component.onCompleted: {
+        if (Translator.enabled)
+            Translator.prepare()
+    }
+
+    Shortcut {
+        sequence: "F13"
+        onActivated: Translator.manualTranslate()
+    }
+    Shortcut {
+        sequence: "F14"
+        onActivated: Translator.toggleOverlay()
+    }
+    Shortcut {
+        sequence: "F15"
+        onActivated: Translator.toggleBacklog()
+    }
+
+    // Small always-available entry point. Kept away from the centre so it does
+    // not interfere with gameplay input.
+    Rectangle {
+        id: gear
+        width: 38
+        height: 38
+        radius: 19
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: 12
+        color: settingsOpen ? "#e6007acc" : "#99000000"
+        border.color: "#66ffffff"
+        border.width: 1
+        visible: Chiaki.session !== null
+
+        Text {
+            anchors.centerIn: parent
+            text: "訳"
+            color: "white"
+            font.pixelSize: 18
+            font.bold: true
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                root.settingsOpen = !root.settingsOpen
+                if (root.settingsOpen)
+                    Translator.prepare()
+                else
+                    root.forceActiveFocus()
+            }
+        }
+    }
+
+    // Status line: OCR timing, duplicate suppression, backend errors.
+    Rectangle {
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.margins: 12
+        width: Math.min(statusText.implicitWidth + 20, parent.width - 80)
+        height: visible ? 26 : 0
+        radius: 6
+        color: "#99000000"
+        visible: Chiaki.session !== null && Translator.statusText.length > 0 &&
+                 (Translator.enabled || Translator.prepared || root.settingsOpen)
+
+        Text {
+            id: statusText
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: 10
+            elide: Text.ElideRight
+            width: parent.width - 20
+            text: Translator.statusText
+            color: "#d0ffffff"
+            font.pixelSize: 11
+        }
+    }
+
+    // Translated subtitle. The source line is tappable for dictionary lookup.
+    Rectangle {
+        id: subtitle
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 28
+        width: Math.min(parent.width * 0.88, 980)
+        height: subtitleColumn.implicitHeight + 24
+        radius: 10
+        color: "#cc0b0c10"
+        border.color: "#33ffffff"
+        border.width: 1
+        visible: Chiaki.session !== null && Translator.enabled && Translator.overlayVisible &&
+                 Translator.overlayText.length > 0
+
+        Column {
+            id: subtitleColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.margins: 14
+            spacing: 6
+
+            TextEdit {
+                id: sourceEdit
+                width: parent.width - 28
+                x: 14
+                text: Translator.sourceText
+                color: "#a8ffffff"
+                font.pixelSize: 13
+                wrapMode: TextEdit.Wrap
+                readOnly: true
+                selectByMouse: false
+                activeFocusOnPress: false
+                cursorVisible: false
+            }
+
+            Item {
+                width: 1
+                height: 1
+            }
+
+            Text {
+                x: 14
+                width: parent.width - 28
+                text: Translator.overlayText
+                color: "#fff4e6c8"
+                font.pixelSize: Math.max(18, Math.min(28, width / 26))
+                font.bold: true
+                wrapMode: Text.Wrap
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            propagateComposedEvents: false
+            onClicked: function(mouse) {
+                const origin = sourceEdit.mapToItem(subtitle, 0, 0)
+                const pos = sourceEdit.positionAt(mouse.x - origin.x, mouse.y - origin.y)
+                if (pos >= 0) {
+                    Translator.lookupAt(sourceEdit.text, pos)
+                    root.dictionaryOpen = true
+                }
+            }
+        }
+    }
+
+    // Dictionary card for tapped words.
+    Rectangle {
+        id: dictionaryPanel
+        anchors.left: parent.left
+        anchors.bottom: parent.bottom
+        anchors.margins: 16
+        width: Math.min(parent.width * 0.6, 520)
+        height: Math.min(dictionaryColumn.implicitHeight + 24, parent.height * 0.7)
+        radius: 10
+        color: "#ee111318"
+        border.color: "#55ffffff"
+        border.width: 1
+        visible: root.dictionaryOpen && Translator.dictionaryEntries.length > 0
+
+        Column {
+            id: dictionaryColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 12
+            spacing: 6
+
+            Text {
+                width: parent.width - 24
+                x: 12
+                text: Translator.dictionaryWord
+                color: "white"
+                font.pixelSize: 20
+                font.bold: true
+            }
+
+            ListView {
+                id: dictionaryList
+                width: parent.width - 24
+                x: 12
+                height: Math.min(contentHeight, 240)
+                clip: true
+                model: Translator.dictionaryEntries
+                spacing: 8
+
+                delegate: Column {
+                    width: dictionaryList.width
+                    spacing: 2
+
+                    Text {
+                        text: modelData.surface + (modelData.reading.length > 0 ? "  【" + modelData.reading + "】" : "")
+                        color: "#ffe8c46a"
+                        font.pixelSize: 16
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                    }
+
+                    Repeater {
+                        model: modelData.glosses
+                        delegate: Text {
+                            text: (modelData.pos.length > 0 ? modelData.pos + ": " : "") + modelData.text
+                            color: "#e8ffffff"
+                            font.pixelSize: 13
+                            width: parent.width
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
+    // Dialogue backlog (L5).
+    Rectangle {
+        id: backlogPanel
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.topMargin: 54
+        anchors.bottomMargin: 16
+        anchors.rightMargin: 12
+        width: Math.min(parent.width * 0.34, 460)
+        radius: 10
+        color: "#ee0d0f13"
+        border.color: "#44ffffff"
+        border.width: 1
+        visible: Translator.backlogVisible
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 8
+
+            Row {
+                width: parent.width
+                spacing: 8
+                Text {
+                    text: "Backlog"
+                    color: "white"
+                    font.pixelSize: 17
+                    font.bold: true
+                }
+                Item { width: parent.width - 130; height: 1 }
+                Button {
+                    text: "Clear"
+                    onClicked: Translator.clearBacklog()
+                }
+                Button {
+                    text: "Close"
+                    onClicked: Translator.backlogVisible = false
+                }
+            }
+
+            ListView {
+                width: parent.width
+                height: parent.height - 46
+                clip: true
+                spacing: 8
+                model: Translator.backlog
+                delegate: Column {
+                    width: ListView.view.width
+                    spacing: 2
+                    Text {
+                        text: modelData.source
+                        color: "#a8ffffff"
+                        font.pixelSize: 12
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                    }
+                    Text {
+                        text: modelData.translation
+                        color: "#fff4e6c8"
+                        font.pixelSize: 16
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                    }
+                }
+            }
+        }
+    }
+
+    // Settings card, drawn inside the stream viewport.
+    Rectangle {
+        id: settingsPanel
+        visible: root.settingsOpen && Chiaki.session !== null
+        anchors.centerIn: parent
+        width: Math.min(parent.width * 0.72, 720)
+        height: Math.min(settingsColumn.implicitHeight + 32, parent.height * 0.86)
+        radius: 12
+        color: "#f00e1014"
+        border.color: "#55ffffff"
+        border.width: 1
+
+        Column {
+            id: settingsColumn
+            anchors.fill: parent
+            anchors.margins: 18
+            spacing: 10
+
+            Text {
+                text: "Subtitle translator"
+                color: "white"
+                font.pixelSize: 22
+                font.bold: true
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 12
+                Text { text: "Enabled"; color: "#dddddd"; font.pixelSize: 14 }
+                Item { Layout.fillWidth: true }
+                Switch {
+                    checked: Translator.enabled
+                    onToggled: {
+                        Translator.enabled = checked
+                        if (checked)
+                            Translator.prepare()
+                    }
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                Text { text: "Backend"; color: "#dddddd"; font.pixelSize: 14 }
+                ComboBox {
+                    id: backendBox
+                    Layout.fillWidth: true
+                    model: ["Gemini Flash", "DeepL", "Offline NLLB"]
+                    currentIndex: Math.max(0, Translator.backendIds.indexOf(Translator.backendId))
+                    onActivated: Translator.backendId = Translator.backendIds[index]
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                visible: Translator.backendId !== "offline"
+                Text { text: "API key"; color: "#dddddd"; font.pixelSize: 14 }
+                TextField {
+                    id: apiKeyField
+                    Layout.fillWidth: true
+                    placeholderText: "stored in QSettings"
+                    echoMode: TextInput.Password
+                    text: Translator.apiKey(Translator.backendId)
+                }
+                Button {
+                    text: "Save"
+                    onClicked: {
+                        Translator.setApiKey(Translator.backendId, apiKeyField.text)
+                        Translator.applySettings()
+                    }
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                visible: Translator.backendId === "offline"
+                Text { text: "NLLB model dir"; color: "#dddddd"; font.pixelSize: 14 }
+                TextField {
+                    id: nllbField
+                    Layout.fillWidth: true
+                    placeholderText: "/path/to/nllb-200-distilled-600M-ct2-int8"
+                    text: Translator.nllbModelPath
+                }
+                Button {
+                    text: "Save"
+                    onClicked: {
+                        Translator.setNllbModelPath(nllbField.text)
+                        Translator.applySettings()
+                    }
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                Text { text: "Target"; color: "#dddddd"; font.pixelSize: 14 }
+                ComboBox {
+                    model: ["Thai (th)", "English (en)"]
+                    currentIndex: Translator.targetLanguage === "en" ? 1 : 0
+                    onActivated: Translator.targetLanguage = index === 1 ? "en" : "th"
+                }
+                Text { text: "Preprocess"; color: "#dddddd"; font.pixelSize: 14 }
+                ComboBox {
+                    model: ["contrast", "threshold", "none"]
+                    currentIndex: Math.max(0, ["contrast", "threshold", "none"].indexOf(Translator.preprocess))
+                    onActivated: Translator.setPreprocess(["contrast", "threshold", "none"][index])
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                Text { text: "ROI preset"; color: "#dddddd"; font.pixelSize: 14 }
+                TextField {
+                    id: presetField
+                    Layout.fillWidth: true
+                    text: Translator.presetName
+                    placeholderText: "preset name"
+                }
+                Button {
+                    text: "Save"
+                    onClicked: Translator.savePreset(presetField.text)
+                }
+                Button {
+                    text: "Select ROI"
+                    onClicked: {
+                        root.settingsOpen = false
+                        Translator.roiSelectionActive = true
+                    }
+                }
+            }
+
+            Text {
+                width: parent.width
+                text: "L4 translate now · R4 show/hide subtitles · L5 backlog · R5 select ROI\n" +
+                      "Tap a source line to look a word up in JMdict. Offline NLLB requires a separate build."
+                color: "#99ffffff"
+                font.pixelSize: 11
+                wrapMode: Text.Wrap
+            }
+
+            Text {
+                width: parent.width
+                text: Translator.statusText
+                color: "#ffd27a"
+                font.pixelSize: 12
+                wrapMode: Text.Wrap
+            }
+
+            Item { height: 1; width: 1 }
+
+            Button {
+                text: "Close"
+                onClicked: root.settingsOpen = false
+            }
+        }
+    }
+
+    // ROI selection layer: drag a rectangle, then it is saved to the preset.
+    Item {
+        id: roiLayer
+        anchors.fill: parent
+        visible: Translator.roiSelectionActive
+        z: 5000
+
+        property real startX: 0
+        property real startY: 0
+        property real selectionX: 0
+        property real selectionY: 0
+        property real selectionW: 0
+        property real selectionH: 0
+        property bool selecting: false
+
+        onVisibleChanged: {
+            if (visible) {
+                const roi = Translator.roiNormalized
+                selectionX = roi.x * width
+                selectionY = roi.y * height
+                selectionW = roi.width * width
+                selectionH = roi.height * height
+            }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: "#66000000"
+        }
+
+        Rectangle {
+            id: selectionRect
+            x: roiLayer.selectionX
+            y: roiLayer.selectionY
+            width: roiLayer.selectionW
+            height: roiLayer.selectionH
+            color: "#2200a7ff"
+            border.color: "#00a7ff"
+            border.width: 2
+        }
+
+        Text {
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.topMargin: 30
+            text: "Drag to select the subtitle area · release to save"
+            color: "white"
+            font.pixelSize: 16
+            style: Text.Outline
+            styleColor: "#99000000"
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onPressed: function(mouse) {
+                roiLayer.startX = mouse.x
+                roiLayer.startY = mouse.y
+                roiLayer.selectionX = mouse.x
+                roiLayer.selectionY = mouse.y
+                roiLayer.selectionW = 0
+                roiLayer.selectionH = 0
+                roiLayer.selecting = true
+            }
+            onPositionChanged: function(mouse) {
+                if (!roiLayer.selecting)
+                    return
+                roiLayer.selectionX = Math.min(roiLayer.startX, mouse.x)
+                roiLayer.selectionY = Math.min(roiLayer.startY, mouse.y)
+                roiLayer.selectionW = Math.abs(mouse.x - roiLayer.startX)
+                roiLayer.selectionH = Math.abs(mouse.y - roiLayer.startY)
+            }
+            onReleased: function(mouse) {
+                roiLayer.selecting = false
+                if (roiLayer.selectionW < 24 || roiLayer.selectionH < 12) {
+                    Translator.roiSelectionActive = false
+                    return
+                }
+                Translator.setRoiNormalized(roiLayer.selectionX / width,
+                                            roiLayer.selectionY / height,
+                                            roiLayer.selectionW / width,
+                                            roiLayer.selectionH / height)
+                Translator.roiSelectionActive = false
+            }
+        }
+    }
+}

@@ -23,3 +23,20 @@ This project is not endorsed or certified by Sony Interactive Entertainment LLC.
 
 Chiaki is a Free and Open Source Software Client for PlayStation 4 and PlayStation 5 Remote Play
 for Linux, FreeBSD, OpenBSD, Android, macOS, Windows, Nintendo Switch and potentially even more platforms.
+
+## Subtitle translator fork (`translator_core/`)
+
+This fork adds an optional, in-viewport Japanese subtitle translator for
+PlayStation Remote Play: on-device OCR (PaddleOCR PP-OCRv3 via ONNX Runtime),
+duplicate suppression, Gemini/DeepL translation with a three-line dialogue
+context, an offline JMdict touch dictionary, and Steam Deck paddle shortcuts.
+
+- Documentation: [`docs/translator/README.md`](docs/translator/README.md)
+- Architecture and upstream hook points: [`docs/translator/ARCHITECTURE.md`](docs/translator/ARCHITECTURE.md)
+- Roadmap and verification status: [`docs/translator/ROADMAP.md`](docs/translator/ROADMAP.md)
+- Build: `-DCHIAKI_ENABLE_TRANSLATOR=ON -DTRANS_ENABLE_ONNXRUNTIME=ON`
+- Optional offline translation: `-DTRANS_ENABLE_CTRANSLATE2=ON` plus an NLLB model (see `docs/translator/OFFLINE_NLLB.md`)
+- Core tests without the GUI: `cmake -S translator_core -B build-core && cmake --build build-core && ctest --test-dir build-core`
+
+The feature is opt-in at runtime and disabled by default; it does not touch
+`lib/` and can be removed by turning the CMake option off.

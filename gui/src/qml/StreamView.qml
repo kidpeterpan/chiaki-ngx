@@ -1302,4 +1302,12 @@ Item {
                 sessionLoading = false;
         }
     }
+
+    Loader {
+        id: translatorOverlay
+        anchors.fill: parent
+        z: 900
+        source: "translator/TranslatorOverlay.qml"
+        asynchronous: false
+    }
 }

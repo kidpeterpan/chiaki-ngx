@@ -66,6 +66,7 @@ class ControllerManager : public QObject
 		void AvailableControllersUpdated();
 		void ControllerMoved();
 		void AudioOutputDeviceAdded(const QString &name);
+		void PaddleButton(int paddle, bool pressed);
 };
 
 class Controller : public QObject
@@ -149,6 +150,7 @@ class Controller : public QObject
 	signals:
 		void StateChanged();
 		void MicButtonPush();
+		void PaddleButton(int paddle, bool pressed);
 		void NewButtonMapping(QString button);
 		void UpdatingControllerMapping(Controller* controller);
 };

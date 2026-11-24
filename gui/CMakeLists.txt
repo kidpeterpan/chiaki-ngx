@@ -55,6 +55,15 @@ set(SOURCE_FILES
 	include/systemdinhibit.h
 	src/systemdinhibit.cpp
 	)
+
+if(TARGET translator_core)
+	list(APPEND SOURCE_FILES
+		include/translator/translatormanager.h
+		src/translator/translatormanager.cpp
+		include/translator/cloudbackends.h
+		src/translator/cloudbackends.cpp
+	)
+endif()
 set(RESOURCE_FILES "")
 
 if(APPLE)
@@ -134,6 +143,24 @@ endif()
 if(CHIAKI_ENABLE_STEAM_SHORTCUT)
 	target_link_libraries(chiaki cpp-steam-tools)
 	target_compile_definitions(chiaki PRIVATE CHIAKI_GUI_ENABLE_STEAM_SHORTCUT)
+endif()
+if(TARGET translator_core)
+	target_link_libraries(chiaki translator_core)
+	target_compile_definitions(chiaki PRIVATE CHIAKI_ENABLE_TRANSLATOR)
+endif()
+
+if(CHIAKI_ENABLE_TESTS AND TARGET translator_core)
+	find_package(Qt6 COMPONENTS Network QUIET)
+	if(TARGET Qt6::Network)
+		add_executable(translator_cloud_tests
+			tests/translator/TestCloudBackends.cpp
+			include/translator/cloudbackends.h
+			src/translator/cloudbackends.cpp
+		)
+		target_include_directories(translator_cloud_tests PRIVATE include)
+		target_link_libraries(translator_cloud_tests PRIVATE Qt6::Core Qt6::Network translator_core)
+		add_test(NAME translator_cloud_tests COMMAND translator_cloud_tests)
+	endif()
 endif()
 if(NOT CHIAKI_ENABLE_FFMPEG_DECODER)
 	message(FATAL_ERROR "Chiaki GUI requires CHIAKI_ENABLE_FFMPEG_DECODER=ON")

@@ -1,0 +1,82 @@
+# Flatpak manifest skeleton for the translator fork.
+#
+# Build with:
+#   flatpak-builder --user --install --force-clean build-flatpak \
+#     packaging/flatpak/org.streetpea.ChiakiTranslator.yml
+#
+# The chiaki-ng module uses a local directory. Replace it with a git source
+# pointing at your fork before publishing. The full jmdict.db is not in git;
+# run scripts/translator/fetch-assets.sh first.
+app-id: org.streetpea.ChiakiTranslator
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: chiaki
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  - --device=all
+  - --filesystem=home
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.freedesktop.portal.Desktop
+
+cleanup:
+  - /include
+  - /lib/cmake
+  - /lib/pkgconfig
+  - /share/man
+
+modules:
+  - name: onnxruntime
+    buildsystem: cmake-ninja
+    builddir: true
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -Donnxruntime_BUILD_SHARED_LIB=ON
+      - -Donnxruntime_BUILD_UNIT_TESTS=OFF
+      - -Donnxruntime_USE_CUDA=OFF
+      - -Donnxruntime_USE_TENSORRT=OFF
+      - -Donnxruntime_ENABLE_PYTHON=OFF
+    sources:
+      - type: git
+        url: https://github.com/microsoft/onnxruntime.git
+        tag: v1.22.0
+
+  - name: chiaki-ng-translator
+    buildsystem: cmake-ninja
+    builddir: true
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCHIAKI_ENABLE_TRANSLATOR=ON
+      - -DTRANS_ENABLE_ONNXRUNTIME=ON
+      - -DONNXRUNTIME_ROOT=/app
+      - -DCHIAKI_ENABLE_TESTS=OFF
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - .tools
+          - refs
+          - build
+          - build-gui
+
+  - name: translator-assets
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/share/chiaki-ng/translator/models /app/share/chiaki-ng/translator/dict
+      - cp assets/models/*.onnx assets/models/japan_dict.txt /app/share/chiaki-ng/translator/models/
+      - cp assets/dict/jmdict.db /app/share/chiaki-ng/translator/dict/
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - .tools
+          - refs
+          - build
+          - build-gui/assets

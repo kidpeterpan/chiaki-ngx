@@ -1,4 +1,8 @@
 #include "qmlbackend.h"
+
+#ifdef CHIAKI_ENABLE_TRANSLATOR
+#include "translator/translatormanager.h"
+#endif
 #include "qmlsettings.h"
 #include "qmlmainwindow.h"
 #include "streamsession.h"
@@ -295,6 +299,10 @@ QmlBackend::QmlBackend(Settings *settings, QmlMainWindow *window)
     qmlRegisterUncreatableType<QmlMainWindow>(uri, 1, 0, "ChiakiWindow", {});
     qmlRegisterUncreatableType<QmlSettings>(uri, 1, 0, "ChiakiSettings", {});
     qmlRegisterUncreatableType<StreamSession>(uri, 1, 0, "ChiakiSession", {});
+
+#ifdef CHIAKI_ENABLE_TRANSLATOR
+    translator = new TranslatorManager(this);
+#endif
 
     QObject *frame_obj = new QObject();
     frame_thread = new QThread(frame_obj);
@@ -1152,6 +1160,11 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
             frame.recovered = true;
         }
 
+#ifdef CHIAKI_ENABLE_TRANSLATOR
+        if (translator)
+            translator->submitFrame(frame.frame);
+#endif
+
         const qint64 delivery_us = static_cast<qint64>(chiaki_time_now_monotonic_us());
         QmlMainWindow *target_window = window;
         QMetaObject::invokeMethod(target_window, [target_window, frame, frames_lost, delivery_us]() mutable {
@@ -1182,6 +1195,10 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
         }
 
         teardownSession();
+#ifdef CHIAKI_ENABLE_TRANSLATOR
+        if (translator)
+            translator->onSessionEnded();
+#endif
         emit sessionChanged(session);
 
         sleep_inhibit->release();

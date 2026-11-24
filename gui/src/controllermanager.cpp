@@ -370,6 +370,7 @@ Controller::Controller(int device_id, ControllerManager *manager)
 {
 	this->id = device_id;
 	this->manager = manager;
+	connect(this, &Controller::PaddleButton, manager, &ControllerManager::PaddleButton);
 	chiaki_orientation_tracker_init(&this->orientation_tracker);
 	chiaki_accel_new_zero_set_inactive(&this->accel_zero, false);
 	chiaki_accel_new_zero_set_inactive(&this->real_accel, true);
@@ -552,12 +553,16 @@ inline bool Controller::HandleButtonEvent(SDL_ControllerButtonEvent event) {
 			micbutton_push = true;
 			break;
 		case SDL_CONTROLLER_BUTTON_PADDLE1:
+			emit PaddleButton(1, event.type == SDL_CONTROLLERBUTTONDOWN);
 			return false;
 		case SDL_CONTROLLER_BUTTON_PADDLE2:
+			emit PaddleButton(2, event.type == SDL_CONTROLLERBUTTONDOWN);
 			return false;
 		case SDL_CONTROLLER_BUTTON_PADDLE3:
+			emit PaddleButton(3, event.type == SDL_CONTROLLERBUTTONDOWN);
 			return false;
 		case SDL_CONTROLLER_BUTTON_PADDLE4:
+			emit PaddleButton(4, event.type == SDL_CONTROLLERBUTTONDOWN);
 			return false;
 #if SDL_VERSION_ATLEAST(2, 0, 14)
 		case SDL_CONTROLLER_BUTTON_TOUCHPAD:

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=chiaki-ng Translator
+GenericName=PlayStation Remote Play with subtitle translation
+Comment=PlayStation Remote Play client with on-device OCR and Japanese-to-Thai subtitle translation
+Exec=chiaki
+Icon=chiaki
+Terminal=false
+Categories=Game;Network;
+Keywords=PlayStation;Remote Play;translator;OCR;Japanese;

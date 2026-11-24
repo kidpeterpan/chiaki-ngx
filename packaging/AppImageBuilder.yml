@@ -1,0 +1,66 @@
+# AppImage Builder recipe.
+#
+# This file is the reference manifest requested by the project plan. AppImage
+# Builder's apt backend bundles Ubuntu libraries, while SteamOS is Arch-based;
+# scripts/translator/build-appimage.sh uses linuxdeploy against the same
+# SteamOS/Arch environment and is the recommended path. Keep both in sync when
+# the dependency list changes.
+version: 1
+
+script:
+  - rm -rf AppDir build-appimage
+  - cmake -S . -B build-appimage -G Ninja
+      -DCMAKE_BUILD_TYPE=Release
+      -DCMAKE_INSTALL_PREFIX=/usr
+      -DCHIAKI_ENABLE_TRANSLATOR=ON
+      -DTRANS_ENABLE_ONNXRUNTIME=ON
+      -DONNXRUNTIME_ROOT=/usr
+      -DCHIAKI_ENABLE_TESTS=OFF
+  - cmake --build build-appimage -j$(nproc)
+  - DESTDIR=$PWD/AppDir cmake --install build-appimage
+  - mkdir -p AppDir/usr/share/chiaki-ng/translator/models AppDir/usr/share/chiaki-ng/translator/dict
+  - cp assets/models/*.onnx assets/models/japan_dict.txt AppDir/usr/share/chiaki-ng/translator/models/
+  - cp assets/dict/jmdict.db AppDir/usr/share/chiaki-ng/translator/dict/
+  - cp packaging/appimage/AppRun AppDir/AppRun
+  - chmod +x AppDir/AppRun
+
+AppDir:
+  path: ./AppDir
+  app_info:
+    id: org.streetpea.chiaking.translator
+    name: chiaki-ng-translator
+    icon: chiaki
+    version: 1.10.1
+    exec: usr/bin/chiaki
+    exec_args: "$@"
+  apt:
+    arch: amd64
+    sources:
+      - sourceline: 'deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble main universe'
+    include:
+      - libqt6core6
+      - libqt6gui6
+      - libqt6qml6
+      - libqt6quick6
+      - libqt6widgets6
+      - libqt6svg6
+      - libqt6network6
+      - libsdl2-2.0-0
+      - libavcodec60
+      - libavutil58
+      - libswscale7
+      - libplacebo338
+      - libopus0
+      - libsqlite3-0
+      - libonnxruntime1.17
+  files:
+    include:
+      - /usr/lib/x86_64-linux-gnu/libonnxruntime.so*
+  runtime:
+    env:
+      CHIAKI_TRANSLATOR_ASSETS: '$APPDIR/usr/share/chiaki-ng/translator'
+
+AppImage:
+  arch: x86_64
+  update-information: None
+  sign-key: None

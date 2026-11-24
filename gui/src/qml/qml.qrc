@@ -28,5 +28,6 @@
     <file>controls/RadioButton.qml</file>
     <file>controls/Slider.qml</file>
     <file>controls/TextField.qml</file>
+    <file>translator/TranslatorOverlay.qml</file>
   </qresource>
 </RCC>
