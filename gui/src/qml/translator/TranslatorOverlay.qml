@@ -366,7 +366,7 @@ Item {
                 ComboBox {
                     id: backendBox
                     Layout.fillWidth: true
-                    model: ["Gemini Flash", "DeepL", "Offline NLLB"]
+                    model: ["Gemini Flash", "DeepL", "OpenCode Go", "OpenAI-compatible", "Offline NLLB"]
                     currentIndex: Math.max(0, Translator.backendIds.indexOf(Translator.backendId))
                     onActivated: Translator.backendId = Translator.backendIds[index]
                 }
@@ -388,6 +388,48 @@ Item {
                     text: "Save"
                     onClicked: {
                         Translator.setApiKey(Translator.backendId, apiKeyField.text)
+                        Translator.applySettings()
+                    }
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                visible: Translator.backendId === "opencode-go" || Translator.backendId === "openai"
+                Text { text: "Base URL"; color: "#dddddd"; font.pixelSize: 14 }
+                TextField {
+                    id: baseUrlField
+                    Layout.fillWidth: true
+                    placeholderText: Translator.backendId === "opencode-go"
+                        ? "https://opencode.ai/inference/go/openai/v1 (default)"
+                        : "https://host/v1"
+                    text: Translator.baseUrl(Translator.backendId)
+                }
+                Button {
+                    text: "Save"
+                    onClicked: {
+                        Translator.setBaseUrl(Translator.backendId, baseUrlField.text)
+                        Translator.applySettings()
+                    }
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                visible: Translator.backendId === "opencode-go" || Translator.backendId === "openai"
+                Text { text: "Model"; color: "#dddddd"; font.pixelSize: 14 }
+                TextField {
+                    id: modelField
+                    Layout.fillWidth: true
+                    placeholderText: "flash-class chat model"
+                    text: Translator.model(Translator.backendId)
+                }
+                Button {
+                    text: "Save"
+                    onClicked: {
+                        Translator.setModel(Translator.backendId, modelField.text)
                         Translator.applySettings()
                     }
                 }

@@ -340,6 +340,28 @@ bool TranslatorManager::ensureBackend()
 		return true;
 	}
 
+	if (backend_id_ == QStringLiteral("opencode-go") || backend_id_ == QStringLiteral("openai"))
+	{
+		CloudBackendOptions openai_options;
+		openai_options.provider = backend_id_;
+		openai_options.api_key = apiKey(backend_id_);
+		openai_options.model = model(backend_id_);
+		const QString base_url = baseUrl(backend_id_);
+		if (!base_url.isEmpty())
+			openai_options.openai_base_url = QUrl(base_url);
+		const QString problem = CloudTranslatorBackend::validateOptions(openai_options);
+		if (!problem.isEmpty())
+		{
+			backend_ = std::make_shared<trans::NullTranslatorBackend>();
+			setStatus(problem);
+			return false;
+		}
+		cloud_backend_ = std::make_shared<CloudTranslatorBackend>(std::move(openai_options));
+		backend_ = cloud_backend_;
+		setStatus(QStringLiteral("Ready (%1)").arg(backend_id_));
+		return true;
+	}
+
 	const QString key = apiKey(backend_id_);
 	if (key.isEmpty())
 	{
@@ -842,6 +864,40 @@ void TranslatorManager::setApiKey(const QString &backend_id, const QString &key)
 {
 	QSettings settings;
 	settings.setValue(QStringLiteral("translator/api_key/") + backend_id, key.trimmed());
+	settings.sync();
+	if (backend_id == backend_id_ && prepared_.load())
+		restartPipeline();
+}
+
+QString TranslatorManager::baseUrl(const QString &backend_id) const
+{
+	QSettings settings;
+	return settings.value(QStringLiteral("translator/base_url/") + backend_id).toString();
+}
+
+void TranslatorManager::setBaseUrl(const QString &backend_id, const QString &url)
+{
+	QSettings settings;
+	settings.setValue(QStringLiteral("translator/base_url/") + backend_id, url.trimmed());
+	settings.sync();
+	if (backend_id == backend_id_ && prepared_.load())
+		restartPipeline();
+}
+
+QString TranslatorManager::model(const QString &backend_id) const
+{
+	// A flash-class chat-completions model from OpenCode's live /models list; subtitles
+	// need low latency. Other providers have no default.
+	const QString fallback = backend_id == QStringLiteral("opencode-go")
+		? QStringLiteral("glm-5.3-flash") : QString();
+	QSettings settings;
+	return settings.value(QStringLiteral("translator/model/") + backend_id, fallback).toString();
+}
+
+void TranslatorManager::setModel(const QString &backend_id, const QString &model_name)
+{
+	QSettings settings;
+	settings.setValue(QStringLiteral("translator/model/") + backend_id, model_name.trimmed());
 	settings.sync();
 	if (backend_id == backend_id_ && prepared_.load())
 		restartPipeline();

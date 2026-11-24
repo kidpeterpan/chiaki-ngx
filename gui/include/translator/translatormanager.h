@@ -65,7 +65,7 @@ public:
 	QString overlayText() const { return overlay_text_; }
 	QString statusText() const { return status_text_; }
 	QString backendId() const { return backend_id_; }
-	QStringList backendIds() const { return QStringList{"gemini", "deepl", "offline"}; }
+	QStringList backendIds() const { return QStringList{"gemini", "deepl", "opencode-go", "openai", "offline"}; }
 	QString targetLanguage() const { return target_language_; }
 	QVariantMap roiNormalized() const;
 	QVariantList backlog() const { return backlog_; }
@@ -104,6 +104,11 @@ public slots:
 	void clearBacklog();
 	void setApiKey(const QString &backend_id, const QString &key);
 	QString apiKey(const QString &backend_id) const;
+	// Settings for the OpenAI-compatible providers ("opencode-go", "openai").
+	QString baseUrl(const QString &backend_id) const;
+	void setBaseUrl(const QString &backend_id, const QString &url);
+	QString model(const QString &backend_id) const;
+	void setModel(const QString &backend_id, const QString &model_name);
 	void applySettings();
 	void setPreprocess(const QString &mode);
 	void setNllbModelPath(const QString &path);

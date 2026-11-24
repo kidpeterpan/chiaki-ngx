@@ -56,13 +56,46 @@ QString Shorten(const QByteArray &body)
 	return text;
 }
 
+bool IsOpenAiProvider(const QString &provider)
+{
+	return provider == QStringLiteral("opencode-go") || provider == QStringLiteral("openai");
+}
+
+bool IsLocalHost(const QUrl &url)
+{
+	const QString host = url.host().toLower();
+	return host == QStringLiteral("localhost") || host == QStringLiteral("127.0.0.1") ||
+		host == QStringLiteral("::1");
+}
+
+struct PromptTexts
+{
+	QString system;
+	QString user;
+};
+
+// Shared by every LLM provider so they all get the same 3-line dialogue context.
+PromptTexts BuildPromptTexts(const trans::TranslationRequest &request)
+{
+	trans::PromptConfig prompt_config;
+	prompt_config.source_language = LanguageName(QString::fromStdString(request.source_language)).toStdString();
+	prompt_config.target_language = LanguageName(QString::fromStdString(request.target_language)).toStdString();
+
+	trans::ConversationContext context(3);
+	for (const trans::ContextPair &pair : request.context)
+		context.add(pair.source, pair.translation);
+
+	return {QString::fromStdString(trans::buildSystemPrompt(prompt_config)),
+		QString::fromStdString(trans::buildUserPrompt(request.text, context, prompt_config))};
+}
+
 } // namespace
 
 CloudTranslatorBackend::CloudTranslatorBackend(CloudBackendOptions options, QObject *parent)
 	: QObject(parent), options_(std::move(options)), network_(new QNetworkAccessManager(this))
 {
 	name_ = options_.provider.toUtf8();
-	if (options_.model.isEmpty())
+	if (options_.model.isEmpty() && !IsOpenAiProvider(options_.provider))
 		options_.model = QStringLiteral("gemini-2.5-flash");
 	if (!options_.gemini_base_url.isValid() || options_.gemini_base_url.isEmpty())
 		options_.gemini_base_url = QUrl(QStringLiteral("https://generativelanguage.googleapis.com/v1beta/models/"));
@@ -73,6 +106,34 @@ CloudTranslatorBackend::CloudTranslatorBackend(CloudBackendOptions options, QObj
 }
 
 CloudTranslatorBackend::~CloudTranslatorBackend() = default;
+
+QUrl CloudTranslatorBackend::effectiveOpenAiBaseUrl(const CloudBackendOptions &options)
+{
+	if (options.openai_base_url.isValid() && !options.openai_base_url.isEmpty())
+		return options.openai_base_url;
+	if (options.provider == QStringLiteral("opencode-go"))
+		return QUrl(QStringLiteral("https://opencode.ai/inference/go/openai/v1"));
+	return QUrl();
+}
+
+QString CloudTranslatorBackend::validateOptions(const CloudBackendOptions &options)
+{
+	if (!IsOpenAiProvider(options.provider))
+		return QString();
+	const QUrl base = effectiveOpenAiBaseUrl(options);
+	if (base.isEmpty())
+		return QStringLiteral("Set a base URL for the OpenAI-compatible backend");
+	const QString scheme = base.scheme().toLower();
+	const bool local = IsLocalHost(base);
+	if (!(scheme == QStringLiteral("https") || (scheme == QStringLiteral("http") && local)))
+		return QStringLiteral("Base URL must use https (http is allowed only for localhost)");
+	if (options.model.trimmed().isEmpty())
+		return QStringLiteral("Set a model name");
+	const bool key_required = options.provider == QStringLiteral("opencode-go") || !local;
+	if (key_required && options.api_key.isEmpty())
+		return QStringLiteral("Add a %1 API key in translator settings").arg(options.provider);
+	return QString();
+}
 
 void CloudTranslatorBackend::translate(const trans::TranslationRequest &request,
 	trans::TranslationCallback callback)
@@ -89,6 +150,8 @@ void CloudTranslatorBackend::startRequest(const trans::TranslationRequest &reque
 {
 	if (options_.provider == QStringLiteral("deepl"))
 		startDeepl(request, std::move(callback));
+	else if (IsOpenAiProvider(options_.provider))
+		startOpenAiChat(request, std::move(callback));
 	else
 		startGemini(request, std::move(callback));
 }
@@ -96,18 +159,10 @@ void CloudTranslatorBackend::startRequest(const trans::TranslationRequest &reque
 void CloudTranslatorBackend::startGemini(const trans::TranslationRequest &request,
 	trans::TranslationCallback callback)
 {
-	trans::PromptConfig prompt_config;
-	prompt_config.source_language = LanguageName(QString::fromStdString(request.source_language)).toStdString();
-	prompt_config.target_language = LanguageName(QString::fromStdString(request.target_language)).toStdString();
-
-	trans::ConversationContext context(3);
-	for (const trans::ContextPair &pair : request.context)
-		context.add(pair.source, pair.translation);
-
-	const QJsonObject system_object{{"parts", QJsonArray{QJsonObject{
-		{"text", QString::fromStdString(trans::buildSystemPrompt(prompt_config))}}}}};
+	const PromptTexts prompts = BuildPromptTexts(request);
+	const QJsonObject system_object{{"parts", QJsonArray{QJsonObject{{"text", prompts.system}}}}};
 	const QJsonObject user_object{{"role", QStringLiteral("user")}, {"parts", QJsonArray{QJsonObject{
-		{"text", QString::fromStdString(trans::buildUserPrompt(request.text, context, prompt_config))}}}}};
+		{"text", prompts.user}}}}};
 	const QJsonObject generation{{"temperature", 0.2}, {"maxOutputTokens", 400}};
 	const QJsonObject body{{"systemInstruction", system_object},
 		{"contents", QJsonArray{user_object}}, {"generationConfig", generation}};
@@ -122,6 +177,48 @@ void CloudTranslatorBackend::startGemini(const trans::TranslationRequest &reques
 
 	QNetworkRequest network_request(url);
 	network_request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+	QNetworkReply *reply = network_->post(network_request, QJsonDocument(body).toJson(QJsonDocument::Compact));
+	auto *timer = new QTimer(reply);
+	timer->setSingleShot(true);
+	QObject::connect(timer, &QTimer::timeout, reply, &QNetworkReply::abort);
+	timer->start(options_.timeout_ms);
+	const qint64 started_ms = QDateTime::currentMSecsSinceEpoch();
+	QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, callback, started_ms]() mutable {
+		finish(reply, std::move(callback), started_ms);
+	});
+}
+
+void CloudTranslatorBackend::startOpenAiChat(const trans::TranslationRequest &request,
+	trans::TranslationCallback callback)
+{
+	const QString problem = validateOptions(options_);
+	if (!problem.isEmpty())
+	{
+		trans::TranslationResult result;
+		result.ok = false;
+		result.error = problem.toStdString();
+		if (callback)
+			callback(std::move(result));
+		return;
+	}
+
+	const PromptTexts prompts = BuildPromptTexts(request);
+	const QJsonArray messages{
+		QJsonObject{{"role", QStringLiteral("system")}, {"content", prompts.system}},
+		QJsonObject{{"role", QStringLiteral("user")}, {"content", prompts.user}}};
+	const QJsonObject body{{"model", options_.model}, {"messages", messages},
+		{"temperature", 0.2}, {"max_tokens", 400}};
+
+	QUrl url = effectiveOpenAiBaseUrl(options_);
+	QString path = url.path();
+	while (path.endsWith('/'))
+		path.chop(1);
+	url.setPath(path + QStringLiteral("/chat/completions"));
+
+	QNetworkRequest network_request(url);
+	network_request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+	if (!options_.api_key.isEmpty())
+		network_request.setRawHeader("Authorization", "Bearer " + options_.api_key.toUtf8());
 	QNetworkReply *reply = network_->post(network_request, QJsonDocument(body).toJson(QJsonDocument::Compact));
 	auto *timer = new QTimer(reply);
 	timer->setSingleShot(true);
@@ -164,6 +261,14 @@ void CloudTranslatorBackend::finish(QNetworkReply *reply, trans::TranslationCall
 	trans::TranslationResult result;
 	result.latency_ms = QDateTime::currentMSecsSinceEpoch() - started_ms;
 	const QByteArray body = reply->isOpen() ? reply->readAll() : QByteArray();
+	// Redact the key before anything is shortened for display: a key cut in half by the
+	// truncation would no longer match and its prefix would survive.
+	auto redact = [this](QString text) {
+		if (!options_.api_key.isEmpty())
+			text.replace(options_.api_key, QStringLiteral("***"));
+		return text;
+	};
+	const QString body_excerpt = Shorten(redact(QString::fromUtf8(body)).toUtf8());
 	const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
 
 	if (reply->error() != QNetworkReply::NoError)
@@ -171,15 +276,15 @@ void CloudTranslatorBackend::finish(QNetworkReply *reply, trans::TranslationCall
 		result.ok = false;
 		QString message = reply->error() == QNetworkReply::OperationCanceledError
 			? QStringLiteral("translation request timed out")
-			: reply->errorString();
+			: redact(reply->errorString());
 		if (status >= 400)
-			message += QStringLiteral(" (HTTP %1: %2)").arg(status).arg(Shorten(body));
+			message += QStringLiteral(" (HTTP %1: %2)").arg(status).arg(body_excerpt);
 		result.error = message.toStdString();
 	}
 	else if (status >= 400)
 	{
 		result.ok = false;
-		result.error = QStringLiteral("HTTP %1: %2").arg(status).arg(Shorten(body)).toStdString();
+		result.error = QStringLiteral("HTTP %1: %2").arg(status).arg(body_excerpt).toStdString();
 	}
 	else
 	{
@@ -191,6 +296,21 @@ void CloudTranslatorBackend::finish(QNetworkReply *reply, trans::TranslationCall
 			if (!translations.isEmpty())
 				result.text = CleanTranslation(
 					translations.first().toObject().value(QStringLiteral("text")).toString()).toStdString();
+		}
+		else if (IsOpenAiProvider(options_.provider))
+		{
+			const QJsonArray choices = root.value(QStringLiteral("choices")).toArray();
+			if (!choices.isEmpty())
+			{
+				const QJsonObject message = choices.first().toObject()
+					.value(QStringLiteral("message")).toObject();
+				const QJsonValue content = message.value(QStringLiteral("content"));
+				if (content.isString())
+					result.text = CleanTranslation(content.toString()).toStdString();
+				const QJsonValue reasoning = message.value(QStringLiteral("reasoning_content"));
+				if (result.text.empty() && reasoning.isString() && !reasoning.toString().trimmed().isEmpty())
+					result.error = "model returned reasoning but no content; pick a non-reasoning model";
+			}
 		}
 		else
 		{
@@ -224,6 +344,8 @@ void CloudTranslatorBackend::finish(QNetworkReply *reply, trans::TranslationCall
 	}
 
 	reply->deleteLater();
+	if (!options_.api_key.isEmpty() && !result.error.empty())
+		result.error = QString::fromStdString(result.error).replace(options_.api_key, QStringLiteral("***")).toStdString();
 	if (callback)
 		callback(std::move(result));
 }

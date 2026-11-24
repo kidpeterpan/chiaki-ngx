@@ -1,7 +1,7 @@
 # chiaki-ngx Translator
 
 ส่วนเสริมของ chiaki-ngx สำหรับแปลซับไตเติลเกม PlayStation 5 แบบเรียลไทม์บน Steam Deck
-ทำงานในเครื่อง (on-device OCR) แล้วเลือกแปลผ่าน Gemini/DeepL หรือเอาต์พุตข้อความไปใช้ต่อ
+ทำงานในเครื่อง (on-device OCR) แล้วเลือกแปลผ่าน Gemini, DeepL หรือ endpoint แบบ OpenAI-compatible (เช่น OpenCode Go) หรือเอาต์พุตข้อความไปใช้ต่อ
 
 > สถานะ: โมดูล `translator_core` และตัวเชื่อม Qt/QML ถูกเขียนและทดสอบแกนหลักครบแล้ว
 > (repository health `scripts/verify.sh --full` PASS ทุก stage)
@@ -15,7 +15,7 @@
 - จำกัดการดึงภาพ 10 Hz และตรวจความนิ่งของข้อความ 250 ms ก่อนสั่ง OCR
 - OCR ภาษาญี่ปุ่นด้วย PaddleOCR PP-OCRv3 (ONNX Runtime C++) รองรับข้อความแนวตั้งแบบคอลัมน์
 - กรองข้อความซ้ำด้วย Levenshtein similarity ≥ 90%
-- แปลแบบมีบริบท 3 ประโยคล่าสุด ผ่าน Gemini Flash หรือ DeepL (Qt Network, async)
+- แปลแบบมีบริบท 3 ประโยคล่าสุด ผ่าน Gemini Flash, DeepL หรือ OpenAI-compatible chat completions เช่น OpenCode Go (Qt Network, async)
 - แคชคำแปล LRU, backlog บทสนทนา, และแตะคำเพื่อเปิด JMdict (SQLite)
 - Overlay ภายใน viewport เดียวกับวิดีโอ (ไม่เปิดหน้าต่างแยก จึงไม่หลุด focus ใน Gamescope)
 - ปุ่มหลังเครื่อง L4/R4/L5/R5 ผ่าน SDL paddle events + คีย์ลัด F13/F14/F15
@@ -32,7 +32,7 @@ translator_core/            C++17 static library (ไม่พึ่ง Qt)
 
 gui/
 ├── include/translator/     TranslatorManager (QML singleton), cloud backends
-├── src/translator/         Qt adapter + Gemini/DeepL
+├── src/translator/         Qt adapter + Gemini/DeepL/OpenAI-compatible
 └── src/qml/translator/     TranslatorOverlay.qml (subtitle, ROI, backlog, settings)
 
 assets/
@@ -109,7 +109,7 @@ CHIAKI_TRANSLATOR_ASSETS=$PWD/assets ./build/gui/chiaki
 ## วิธีใช้บน Steam Deck
 
 1. เปิดเกมผ่าน Remote Play ตามปกติ
-2. กดไอคอน **訳** มุมขวาบน เปิด translator แล้วใส่ API key (Gemini หรือ DeepL)
+2. กดไอคอน **訳** มุมขวาบน เปิด translator แล้วใส่ API key (Gemini, DeepL, OpenCode Go หรือ OpenAI-compatible)
 3. เลือก **Select ROI** แล้วลากกรอบบริเวณกล่องข้อความ (แตะ/ลากด้วยจอสัมผัสได้)
    - บันทึกเป็น preset แยกตามเกมได้
 4. ระหว่างเล่น
@@ -132,6 +132,9 @@ CHIAKI_TRANSLATOR_ASSETS=$PWD/assets ./build/gui/chiaki
   ตั้งค่าใช้ software decoding ชั่วคราวได้ถ้าพบปัญหา
 - DeepL API บางแผนไม่รองรับภาษาไทย ให้ใช้ Gemini หรือ NLLB แทน
 - Offline NLLB เป็น optional build (`-DTRANS_ENABLE_CTRANSLATE2=ON`) และไม่บันเดิลโมเดลเพราะลิขสิทธิ์ CC BY-NC 4.0; RAM ~1.2 GB (สูงกว่างบ)
+- OpenAI-compatible (รวม OpenCode Go) รองรับเฉพาะ chat-completions ไม่รองรับสไตล์ `responses`/`messages`;
+  ต้องระบุ Base URL และชื่อโมเดล (OpenCode Go มีค่าเริ่มต้นให้) และใช้ `http://` ได้เฉพาะ localhost (เช่น Ollama ไม่ต้องมี key);
+  ควรเลือกโมเดลแบบ flash เพราะโมเดล reasoning อาจตอบกลับมาโดยไม่มีเนื้อหา ซึ่งจะแสดงเป็น error
 - API key เก็บใน QSettings แบบ plain text; ควรใช้บัญชี API แยกและจำกัด quota
 
 ## Licenses

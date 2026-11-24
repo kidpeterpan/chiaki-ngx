@@ -159,6 +159,9 @@ if(CHIAKI_ENABLE_TESTS AND TARGET translator_core)
 		)
 		target_include_directories(translator_cloud_tests PRIVATE include)
 		target_link_libraries(translator_cloud_tests PRIVATE Qt6::Core Qt6::Network translator_core)
+		# The top-level enable_testing() runs after add_subdirectory(gui), so without this
+		# call the add_test below is ignored and ctest never sees the target.
+		enable_testing()
 		add_test(NAME translator_cloud_tests COMMAND translator_cloud_tests)
 	endif()
 endif()

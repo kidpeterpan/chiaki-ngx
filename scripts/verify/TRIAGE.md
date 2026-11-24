@@ -134,6 +134,20 @@ builds. **medium** = a gap in coverage or reproducibility. **low** = noise.
   CI's Linux job covers the core stages only; the full gate runs on macOS.
 - Action: extend the Linux CI job once a Qt image or cached dependency set is available.
 
+### T15. The translator cloud backend tests are not run by `--full`
+
+- Evidence: `gui/tests/translator/TestCloudBackends.cpp` (target `translator_cloud_tests`, a
+  local mock server, no network) is defined in `gui/CMakeLists.txt` only when the GUI and
+  `CHIAKI_ENABLE_TESTS` are on. `scripts/verify/stages/test-unit.sh` configures with
+  `CHIAKI_ENABLE_GUI=OFF` and `CHIAKI_ENABLE_TRANSLATOR=OFF`, and `build-release` builds with
+  tests off. `build-release` compiles `cloudbackends.cpp` but runs nothing against it.
+- Also found: the top-level `enable_testing()` ran after `add_subdirectory(gui)`, so the target
+  was never registered with ctest. `gui/CMakeLists.txt` now calls `enable_testing()` itself.
+- Manual run: configure a tree with `-DCHIAKI_ENABLE_TESTS=ON` (GUI and translator on), then
+  `cmake --build <dir> --target translator_cloud_tests` and
+  `ctest --test-dir <dir> -R translator_cloud_tests`.
+- Action: add a harness step that builds and runs the target.
+
 ## Working-tree state (not a defect, but affects the next commit)
 
 - `scripts/verify-health.sh` is tracked in HEAD (it came in with commit `6107c78e`), and its
