@@ -2,7 +2,8 @@ name: Create chiaki-ngx release
 
 on:
   push:
-    tags: [ 'v*.*.*' ]
+    # v*-translator tags are released by release-translator.yml
+    tags: [ 'v*.*.*', '!v*-translator' ]
 
 jobs:
   create-release:

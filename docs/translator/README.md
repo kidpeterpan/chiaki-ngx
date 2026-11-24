@@ -122,6 +122,20 @@ CHIAKI_TRANSLATOR_ASSETS=$PWD/assets ./build/gui/chiaki
 หาก Steam Input ไม่ส่ง paddle event มาเป็น `SDL_CONTROLLER_BUTTON_PADDLE1..4`
 ให้ผูก L4/R4/L5 กับ F13/F14/F15 ใน Steam Input แทน (overlay รองรับทั้งสองทาง)
 
+## การปล่อย release
+
+ทุก release มีไฟล์ดาวน์โหลดสองตัวในที่เดียว: **macOS arm64 DMG** และ **Steam Deck AppImage**
+(พร้อมไฟล์ `.sha256`) workflow `release-translator.yml` สร้างให้เมื่อ push tag รูปแบบ `vX.Y.Z-translator`
+(ข้อความของ annotated tag จะกลายเป็น release notes)
+
+```bash
+git tag -a v0.2.0-translator -m "สรุปสิ่งที่เปลี่ยน"
+git push origin v0.2.0-translator
+```
+
+ทดสอบโดยไม่ปล่อยจริง: Actions → *Release chiaki-ngx translator* → Run workflow กรอก tag
+และปิด `publish` จะ build และเก็บ artifact ไว้ 7 วันเท่านั้น
+
 ## ข้อจำกัดที่ทราบ
 
 - ข้อความแนวตั้ง: ตัวตรวจจับของ PP-OCRv3 ออกแบบมาสำหรับบรรทัดแนวนอน

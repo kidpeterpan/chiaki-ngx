@@ -2,6 +2,7 @@ name: Build chiaki-ngx macOSX
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -39,6 +40,9 @@ jobs:
           export CPATH=$(brew --prefix)/opt/ffmpeg/include
           cmake --build build --config Release --clean-first --target chiaki
 
+      - name: Fetch OCR models and full JMdict
+        run: scripts/translator/fetch-assets.sh
+
       - name: Deploy chiaki-ngx
         run: |
           rm -rf chiaki-ngx.app chiaki-ngx.dmg
@@ -75,6 +79,17 @@ jobs:
           rm -f chiaki-ngx.dmg
           hdiutil create -srcfolder chiaki-ngx.app chiaki-ngx.dmg
           codesign --force --entitlements gui/entitlements.xml --deep --sign - chiaki-ngx.dmg
+
+      - name: Verify app contents and startup
+        run: |
+          test -s chiaki-ngx.dmg
+          translator=chiaki-ngx.app/Contents/Resources/translator
+          test -f "$translator/models/japan_PP-OCRv3_rec.onnx"
+          # the sample database is far smaller; a full JMdict is tens of MB
+          test "$(stat -f%z "$translator/dict/jmdict.db")" -gt 20000000
+          find chiaki-ngx.app -name 'libonnxruntime*' | grep -q .
+          QT_QPA_PLATFORM=offscreen chiaki-ngx.app/Contents/MacOS/chiaki --help | head -5
+          echo "app contents and startup OK"
 
       - name: Upload chiaki-ngx Artifact
         uses: actions/upload-artifact@v7
