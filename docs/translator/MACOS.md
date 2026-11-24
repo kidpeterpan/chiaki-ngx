@@ -16,7 +16,7 @@
 
 ```bash
 brew install cmake ninja qt libplacebo ffmpeg onnxruntime miniupnpc json-c \
-  openssl@3 opus sdl2
+  openssl@3 opus sdl2-compat
 ```
 
 > `openssl@3` จำเป็นเพราะ bundled curl ของ chiaki-ng ยังไม่รองรับ OpenSSL 4 ได้ทั้งหมด

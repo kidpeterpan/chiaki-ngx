@@ -21,12 +21,16 @@ APP="$BUILD/gui/chiaki.app"
 for cmd in cmake ninja brew codesign; do
 	command -v "$cmd" >/dev/null || { echo "missing $cmd" >&2; exit 1; }
 done
-for formula in qt libplacebo ffmpeg onnxruntime miniupnpc json-c openssl@3 opus sdl2; do
+for formula in qt libplacebo ffmpeg onnxruntime miniupnpc json-c openssl@3 opus; do
 	brew list --versions "$formula" >/dev/null 2>&1 || {
 		echo "missing Homebrew formula: $formula" >&2
 		exit 1
 	}
 done
+if ! brew list --versions sdl2 >/dev/null 2>&1 && ! brew list --versions sdl2-compat >/dev/null 2>&1; then
+	echo "missing Homebrew formula: sdl2 (or sdl2-compat)" >&2
+	exit 1
+fi
 
 PYTHON_BIN="$(command -v python3)"
 if ! "$PYTHON_BIN" -c 'import google.protobuf' >/dev/null 2>&1; then
