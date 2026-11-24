@@ -1,0 +1,42 @@
+# Fast, credential-free verification for the translator module.
+name: Translator tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core-linux:
+    name: core (Linux, no ONNX)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build build-essential libsqlite3-dev
+      - name: Configure
+        run: cmake -S translator_core -B build-core -G Ninja -DTRANS_BUILD_TESTS=ON -DTRANS_ENABLE_ONNXRUNTIME=OFF
+      - name: Build
+        run: cmake --build build-core -j"$(nproc)"
+      - name: Test
+        run: ctest --test-dir build-core --output-on-failure
+
+  core-macos-onnx:
+    name: core + OCR (macOS)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: brew install cmake ninja onnxruntime
+      - name: Configure
+        run: |
+          cmake -S translator_core -B build-core -G Ninja             -DTRANS_BUILD_TESTS=ON             -DTRANS_ENABLE_ONNXRUNTIME=ON             -DONNXRUNTIME_ROOT="$(brew --prefix onnxruntime)"
+      - name: Build
+        run: cmake --build build-core -j"$(sysctl -n hw.ncpu)"
+      - name: Test
+        run: ctest --test-dir build-core --output-on-failure
