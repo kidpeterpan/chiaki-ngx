@@ -1,0 +1,48 @@
+name: Verify project health
+
+# Runs the same command agents run locally: scripts/verify.sh --full.
+# See AGENTS.md. Keep this file in step with scripts/verify/ and the Brewfile list in
+# scripts/verify/stages/env.sh.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify --full (macOS)
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Package list follows .github/workflows/build-macos.yml, with the unversioned qt
+      # formula that scripts/translator/build-macos.sh preflights. openssl@4 is not
+      # installed (the repo's CI unlinks it; the harness assumes it is absent).
+      - name: Install build and verification tools
+        run: |
+          brew install qt ffmpeg pkgconfig opus openssl@3 cmake ninja nasm protobuf@29 \
+            speexdsp libplacebo wget python-setuptools json-c miniupnpc libevent onnxruntime \
+            sdl2-compat shellcheck actionlint gitleaks osv-scanner rsync
+          cmake --version
+          ninja --version
+
+      - name: Full verification
+        run: scripts/verify.sh --full
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-logs
+          path: .verify-logs/latest/
+          retention-days: 14

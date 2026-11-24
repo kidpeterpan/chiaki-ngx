@@ -35,6 +35,10 @@ Add `-DTRANS_ENABLE_ONNXRUNTIME=ON` to also build `translator_onnx_tests` and th
 
 PRs target `main`.
 
+## Verification
+
+Run `scripts/verify.sh --quick` while editing and `scripts/verify.sh --full` before finishing any task. Read `AGENTS.md` for the exit codes, the log locations, and the rules on failures and exceptions. Do not mark work complete while `--full` fails. Known pre-existing failures are listed in `scripts/verify/TRIAGE.md`.
+
 ## Architecture
 
 **`lib/` — C protocol core (`chiaki-lib`).** Discovery, session setup, the Takion transport, control channel, video/audio receive with FEC reassembly, crypto, and codec wrappers. Entry points for most protocol or media bugs: `lib/src/ctrl.c` (negotiation), `takion.c` (transport), `videoreceiver.c` / `audioreceiver.c`, `ffmpegdecoder.c` / `opus*.c`. Errors are returned as `ChiakiErrorCode`; there are no exceptions in C code, and every `*_init` has a matching `*_fini`. Protobuf is generated at build time from `lib/protobuf/takion.proto`; never commit generated `takion.pb.*`.

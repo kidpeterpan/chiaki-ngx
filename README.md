@@ -24,6 +24,48 @@ This project is not endorsed or certified by Sony Interactive Entertainment LLC.
 Chiaki is a Free and Open Source Software Client for PlayStation 4 and PlayStation 5 Remote Play
 for Linux, FreeBSD, OpenBSD, Android, macOS, Windows, Nintendo Switch and potentially even more platforms.
 
+## Verifying the project
+
+One command answers "is this tree healthy?" — it builds, tests, starts, and scans for
+committed secrets. CI runs the same `--full` command on macOS, so a green local run means a
+green pipeline.
+
+```bash
+scripts/verify.sh --quick            # ~5 s warm, while editing
+scripts/verify.sh --full             # ~80 s, before opening a PR (the default)
+scripts/verify.sh --stage security   # one stage plus its prerequisites
+scripts/verify.sh --full --json      # machine-readable summary on stdout
+```
+
+`make verify`, `verify-quick`, `verify-json` and `verify-stage STAGE=<name>` wrap the same script.
+
+| Stage | Checks | `--quick` |
+| --- | --- | :-: |
+| `env` | Toolchain and Homebrew formulas, submodules at their pinned commits, required assets tracked | ✓ |
+| `lint` | shellcheck, actionlint, YAML syntax, qmllint, no leftover pre-rename project names | ✓ |
+| `build-core` | `translator_core` compiles with warnings as errors | ✓ |
+| `test-core` | `translator_core` unit tests (ctest) | ✓ |
+| `build-release` | Clean Release build of the app with the translator and ONNX Runtime | |
+| `test-unit` | `lib/` protocol tests (`chiaki-unit`) | |
+| `smoke` | OCR and dictionary probes on tracked fixtures; app `--help` starts and writes no user settings | |
+| `security` | gitleaks secret scan, osv-scanner audit (fails on HIGH/CRITICAL), no credential-shaped files tracked | |
+
+Prerequisites (macOS with Homebrew; `env` reports whatever is missing):
+
+```bash
+brew install cmake ninja qt libplacebo ffmpeg onnxruntime miniupnpc json-c \
+  openssl@3 opus sdl2-compat shellcheck actionlint gitleaks osv-scanner
+```
+
+Exit codes: `0` pass, `1` a stage failed, `2` a prerequisite is missing, `64` bad usage.
+A failure prints the failing command and a capped excerpt; full per-stage logs land in
+`.verify-logs/latest/`. [`AGENTS.md`](AGENTS.md) has the rules, including the only three
+places an exception may be recorded, and [`scripts/verify/TRIAGE.md`](scripts/verify/TRIAGE.md)
+tracks accepted and outstanding findings.
+
+Deliberately not covered: a windowed GUI launch (it would mutate real app state) and network
+isolation during tests. `TRIAGE.md` explains both.
+
 ## Subtitle translator fork (`translator_core/`)
 
 This fork adds an optional, in-viewport Japanese subtitle translator for

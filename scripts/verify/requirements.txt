@@ -1,0 +1,7 @@
+# Harness-only Python dependencies (scripts/verify/lib.sh ensure_venv).
+# YAML syntax checks and the nanopb generator. Exact pins; regenerate deliberately.
+grpcio==1.85.4
+grpcio-tools==1.85.4
+protobuf==7.36.2
+PyYAML==6.0.4
+typing_extensions==4.16.0

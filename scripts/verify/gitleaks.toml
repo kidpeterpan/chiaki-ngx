@@ -1,0 +1,19 @@
+# gitleaks configuration for scripts/verify/stages/security.sh.
+# Every allowlist entry needs a reason. Do not add an entry to silence a real credential:
+# a finding that is a real secret must be rotated and removed from the tree.
+title = "chiaki-ngx secret scan"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Verified false positives only"
+paths = [
+  # Public GPG key blocks for the Flathub repo files (public key material, not a secret).
+  '''scripts/flatpak/.*\.flatpakref$''',
+  # T1 (accepted 2026-11-24 by the repo owner): the PSN OAuth CLIENT_SECRET is a public
+  # credential of the PlayStation app, committed in plain text. Scope is these two files
+  # only; any other finding still fails. Re-review if the login flow changes.
+  '''gui/include/psnaccountid\.h$''',
+  '''scripts/psn-account-id\.py$''',
+]

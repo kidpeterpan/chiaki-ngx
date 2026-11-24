@@ -1,0 +1,7 @@
+# Accepted HIGH/CRITICAL dependency advisories. One per line:
+#   <advisory-id> expires=YYYY-MM-DD <reason, including who accepted it and why>
+# An expired entry fails the audit. Empty means no exceptions are accepted.
+# T2 (accepted 2026-11-24 by the repo owner, expires 2027-02-22): nanopb's dev-only lock
+# file in third-party/nanopb/extra/requirements_lock.txt. Not installed by the build.
+GHSA-7gcm-g887-7qv7 expires=2027-02-22 protobuf 5.29.5 in nanopb dev lock; not shipped; upstream bump pending
+GHSA-5rjg-fvgr-3xxf expires=2027-02-22 setuptools 70.0.0 in nanopb dev lock; not shipped; upstream bump pending
