@@ -60,6 +60,8 @@ case "$TRANS_ONNX" in ON|OFF) ;; *) echo "TRANS_ONNX must be ON or OFF" >&2; exi
 export REPORT_FD=1
 [ "$JSON" -eq 1 ] && REPORT_FD=2
 
+acquire_lock || exit 2
+
 RUN_ID="$(date +%Y%m%d-%H%M%S)-$$"
 RUN_DIR="$ROOT/.verify-logs/$RUN_ID"
 mkdir -p "$RUN_DIR"
@@ -88,6 +90,7 @@ finish() {
 		orphans="$(kill_tracked)"
 	fi
 	rm -rf "$TMP_DIR"
+	release_lock
 	if [ -n "$INTERRUPTED" ]; then
 		overall="INTERRUPTED"
 		if [ -n "$CURRENT_STAGE" ]; then
@@ -119,9 +122,12 @@ trap 'INTERRUPTED=130; exit 130' INT
 trap 'INTERRUPTED=143; exit 143' TERM
 trap finish EXIT
 
-say "verify: mode=$MODE run=$RUN_ID clean=$CLEAN TRANS_ONNX=$TRANS_ONNX"
+record_tool_versions
+say "verify: mode=$MODE run=$RUN_ID platform=$PLATFORM clean=$CLEAN TRANS_ONNX=$TRANS_ONNX"
 
 for s in $REQUESTED; do plan_add "$s"; done
+VERIFY_PLAN="$(ordered_plan)"
+export VERIFY_PLAN
 FAILED_STAGES=""
 failed() { case " $FAILED_STAGES " in *" $1 "*) return 0 ;; esac; return 1; }
 

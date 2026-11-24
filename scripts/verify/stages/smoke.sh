@@ -7,6 +7,8 @@
 #   app    the shipping app's --help; asserts it starts, dyld resolves every library,
 #          and no preference file of the user's changed
 #
+# Platform paths come from scripts/verify/platform.sh.
+#
 # Not covered, deliberately: a windowed launch. `--profile` persistently changes the
 # user's current profile (gui/src/main.cpp, Settings::SetCurrentProfile), and a timed
 # kill during Vulkan startup latches the OpenGL fallback (qmlmainwindow.cpp). Both would
@@ -25,6 +27,17 @@ stage_smoke() {
 
 smoke_ocr() {
 	local out rc=0
+	# The probe only exists when the OCR backend is compiled in. With TRANS_ONNX=OFF that is
+	# the deliberate configuration, so it is reported as not covered; with ONNX on, a missing
+	# probe is a real build failure.
+	if [ ! -x build-core/translator_ocr_probe ]; then
+		if [ "$TRANS_ONNX" = OFF ]; then
+			echo "  NOT COVERED: OCR backend disabled (TRANS_ONNX=OFF), probe not built"
+			return 0
+		fi
+		echo "translator_ocr_probe missing even though TRANS_ONNX=ON"
+		return 1
+	fi
 	out="$(bounded "$SMOKE_TIMEOUT" build-core/translator_ocr_probe \
 		assets/models/ch_PP-OCRv3_det.onnx assets/models/japan_PP-OCRv3_rec.onnx \
 		assets/models/japan_dict.txt translator_core/tests/fixtures/subtitle.ppm 2>&1)" || rc=$?
@@ -56,14 +69,17 @@ smoke_dict() {
 # after --help; any change fails the stage.
 prefs_snapshot() {
 	local d
-	for d in "$HOME/Library/Preferences" "$HOME/Library/Application Support"; do
+	while IFS= read -r d; do
 		[ -d "$d" ] || continue
-		find "$d" -maxdepth 2 -iname '*chiaki*' -exec stat -f '%N %m %z' {} \; 2>/dev/null
-	done | sort
+		find "$d" -maxdepth 2 -iname '*chiaki*' -print 2>/dev/null | while IFS= read -r f; do
+			platform_stat_fields "$f" 2>/dev/null || true
+		done
+	done < <(platform_settings_paths) | sort
 }
 
 smoke_app_help() {
-	local app="build-release/gui/chiaki.app/Contents/MacOS/chiaki"
+	local app
+	app="$(platform_app_binary)"
 	local before after out rc=0
 	before="$(prefs_snapshot)"
 	# offscreen: QGuiApplication needs no display. --help exits in main.cpp before any

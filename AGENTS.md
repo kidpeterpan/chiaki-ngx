@@ -63,9 +63,25 @@ Read the log before changing code. The excerpt is a summary and can miss the rea
 
 ## Prerequisites
 
-macOS with Homebrew. The `env` stage checks for the tools and formulas it needs, and prints
-what is missing. Harness-only Python packages are pinned in `scripts/verify/requirements.txt`
-and installed into `build-verify/venv/`.
+macOS with Homebrew, or Linux with the libraries installed (pkg-config resolves them, so any
+distro works). Platform differences live in `scripts/verify/platform.sh` — adding a platform
+means editing that file and nothing else.
+
+Prerequisites are resolved per stage: `--quick` needs a compiler and SQLite, the security
+scanners are only required by `security`, and the Qt stack only by `build-release` and
+`test-unit`. `env` gates every stage and prints the missing items with an install command.
+Harness-only Python packages are pinned in `scripts/verify/requirements.txt` and installed
+into `build-verify/venv/`. Each run records exact tool versions in
+`.verify-logs/<run-id>/tool-versions.txt`.
+
+## Robustness
+
+- Every stage has a time budget and is terminated if it exceeds it (reported as exit 124).
+  Override with `VERIFY_TIMEOUT_<STAGE>` in seconds, e.g. `VERIFY_TIMEOUT_BUILD_RELEASE=7200`.
+- A run holds a lock in `.verify-logs/lock`. A second run exits 2 rather than corrupting the
+  shared build trees; a lock whose owner is gone is cleared automatically.
+- `TRANS_ONNX=OFF` builds without the OCR backend. The OCR smoke probe then reports itself as
+  not covered instead of failing, because the probe binary is not built in that configuration.
 
 ## Interrupts and cleanup
 

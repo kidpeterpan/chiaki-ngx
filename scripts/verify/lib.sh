@@ -4,6 +4,9 @@
 #
 # Bash 3.2 compatible (macOS /bin/bash): no associative arrays, mapfile or ${x,,}.
 
+# shellcheck source=platform.sh
+. "$ROOT/scripts/verify/platform.sh"
+
 now() { perl -MTime::HiRes=time -e 'printf "%.3f\n", time'; }
 secs_between() { perl -e 'printf "%.1f", $ARGV[1] - $ARGV[0]' "$1" "$2"; }
 
@@ -16,10 +19,12 @@ die() { echo "verify: $*" >&2; exit 2; }
 
 ALL_STAGES="env lint build-core test-core build-release test-unit smoke security"
 
+# env gates every stage: it is what validates the prerequisites a stage needs, so running
+# any stage without it turns a missing tool into a bare "command not found".
 deps_of() {
 	case "$1" in
-		env|security|build-release|test-unit) echo "" ;;
-		lint|build-core) echo "env" ;;
+		env) echo "" ;;
+		lint|build-core|build-release|test-unit|security) echo "env" ;;
 		test-core) echo "build-core" ;;
 		smoke) echo "build-core build-release" ;;
 		*) echo "unknown stage: $1" >&2; return 1 ;;
@@ -42,6 +47,76 @@ ordered_plan() {
 		case " $PLAN " in *" $s "*) out="$out $s" ;; esac
 	done
 	echo "$out"
+}
+
+# ---- per-stage timeouts ---------------------------------------------------------
+# A hung compiler or scanner must not block a run forever. Generous enough that a slow
+# but working machine never trips them; override with VERIFY_TIMEOUT_<STAGE> in seconds.
+stage_timeout() {
+	local override
+	override="$(eval "echo \${VERIFY_TIMEOUT_$(echo "$1" | tr 'a-z-' 'A-Z_'):-}")"
+	if [ -n "$override" ]; then echo "$override"; return; fi
+	case "$1" in
+		env|lint|smoke) echo 600 ;;
+		build-core|test-core) echo 1200 ;;
+		test-unit|security) echo 1800 ;;
+		build-release) echo 3600 ;;
+		*) echo 1800 ;;
+	esac
+}
+
+# ---- run lock --------------------------------------------------------------------
+# Concurrent runs would share build-core/, build-unit/ and build-release/ and corrupt
+# each other. mkdir is atomic, so it is the lock; a lock whose owner is gone is stale.
+LOCK_DIR="$ROOT/.verify-logs/lock"
+LOCK_HELD=0
+
+acquire_lock() {
+	mkdir -p "$ROOT/.verify-logs"
+	if mkdir "$LOCK_DIR" 2>/dev/null; then
+		echo $$ >"$LOCK_DIR/pid"
+		LOCK_HELD=1
+		return 0
+	fi
+	local owner
+	owner="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+	if [ -n "$owner" ] && kill -0 "$owner" 2>/dev/null; then
+		echo "verify: another run is in progress (pid $owner); wait for it or kill it" >&2
+		return 1
+	fi
+	echo "verify: clearing a stale lock from pid ${owner:-unknown}" >&2
+	rm -rf "$LOCK_DIR"
+	mkdir "$LOCK_DIR" 2>/dev/null || { echo "verify: could not take the lock" >&2; return 1; }
+	echo $$ >"$LOCK_DIR/pid"
+	LOCK_HELD=1
+}
+
+release_lock() {
+	[ "$LOCK_HELD" -eq 1 ] || return 0
+	rm -rf "$LOCK_DIR"
+	LOCK_HELD=0
+}
+
+# ---- reproducibility ---------------------------------------------------------------
+# Exact tool versions, so a disagreement between a developer machine and CI is visible in
+# the logs instead of being guessed at. See TRIAGE T11.
+record_tool_versions() {
+	local out="$RUN_DIR/tool-versions.txt" t ver
+	{
+		echo "platform: $PLATFORM $(uname -r) $(uname -m)"
+		for t in $(platform_tools); do
+			if command -v "$t" >/dev/null 2>&1; then
+				case "$t" in
+					gitleaks) ver="$(gitleaks version 2>&1 | head -n 1)" ;;
+					brew) ver="$(brew --version 2>&1 | head -n 1)" ;;
+					*) ver="$("$t" --version 2>&1 | head -n 1)" ;;
+				esac
+			else
+				ver="MISSING"
+			fi
+			printf '%-12s %s\n' "$t" "$ver"
+		done
+	} >"$out" 2>&1
 }
 
 # ---- process tracking -----------------------------------------------------------
@@ -166,6 +241,11 @@ run_stage() {
 
 	# Job control gives the stage its own process group, so kill_tracked reaches
 	# every child (cmake, ninja, ...) even if the stage is interrupted.
+	local limit timeout_flag watchdog
+	limit="$(stage_timeout "$stage")"
+	timeout_flag="$RUN_DIR/$stage.timed-out"
+	rm -f "$timeout_flag"
+
 	set -m
 	(
 		set -Eeuo pipefail
@@ -176,9 +256,21 @@ run_stage() {
 	) >>"$log" 2>&1 &
 	pgid=$!
 	track_pgid "$pgid"
+	# Watchdog: kills the stage's whole process group if it outlives its budget. Tracked
+	# too, so an interrupt cleans it up; cancelled below on the normal path.
+	( sleep "$limit"; : >"$timeout_flag"; kill -TERM -- "-$pgid" 2>/dev/null ) &
+	watchdog=$!
+	track_pgid "$watchdog"
 	wait "$pgid" 2>/dev/null
 	rc=$?
+	kill -TERM -- "-$watchdog" 2>/dev/null || true
+	wait "$watchdog" 2>/dev/null || true
 	set +m
+
+	if [ -f "$timeout_flag" ]; then
+		rc=124
+		echo "stage exceeded its ${limit}s budget and was terminated" >>"$log"
+	fi
 	CURRENT_STAGE=""
 
 	end="$(now)"
@@ -188,6 +280,10 @@ run_stage() {
 	if [ "$rc" -eq 0 ]; then
 		say "  PASS $stage  ${took}s"
 		record_result "$stage" PASS "$took" 0 "$log" ""
+	elif [ "$rc" -eq 124 ]; then
+		say "  FAIL $stage  ${took}s  (timed out after $(stage_timeout "$stage")s)"
+		record_result "$stage" FAIL "$took" 124 "$log" "timed out: ${step:-stage}"
+		print_failure "$stage" "$rc" "${step:-timed out}" "$log"
 	else
 		say "  FAIL $stage  ${took}s  (exit $rc)"
 		record_result "$stage" FAIL "$took" "$rc" "$log" "$step"

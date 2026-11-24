@@ -103,12 +103,14 @@ builds. **medium** = a gap in coverage or reproducibility. **low** = noise.
 - Action: pass `-I` to the built QML module so the import resolves, then treat warnings as
   errors.
 
-### T11. Reproducibility of the tools
+### T11. Reproducibility of the tools (partly addressed)
 
 - gitleaks was installed with `go install`, so it has no version stamp
   (`gitleaks version` prints "version is set by build process"). CI installs it from Homebrew,
   which floats.
-- Action: pin tool versions in both places, or record the exact versions in each run's log.
+- Addressed: every run now records exact versions in
+  `.verify-logs/<run-id>/tool-versions.txt`, so a dev/CI disagreement is visible.
+- Still open: the versions themselves are not pinned. Homebrew and apt both float.
 
 ### T12. The lib unit tests are one ctest entry
 
@@ -121,6 +123,16 @@ builds. **medium** = a gap in coverage or reproducibility. **low** = noise.
 - The unit tests open a loopback UDP socket (`test/takion.c`) and use an `.invalid` URL
   (`test/aia.c`). Nothing blocks external access. The harness does not claim network
   isolation.
+
+### T14. Linux coverage is partial (verified for the core stages only)
+
+- The harness runs on macOS and Linux. Verified on Linux (Debian aarch64, container):
+  `env`, `build-core` and `test-core` pass with `TRANS_ONNX=OFF`, and a missing scanner
+  produces the install hint rather than a bare "command not found".
+- Not verified on Linux: `build-release`, `test-unit`, `smoke` and `security`. They need the
+  Qt stack, ONNX Runtime and the scanners, which were not installed in the test container.
+  CI's Linux job covers the core stages only; the full gate runs on macOS.
+- Action: extend the Linux CI job once a Qt image or cached dependency set is available.
 
 ## Working-tree state (not a defect, but affects the next commit)
 
