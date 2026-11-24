@@ -1,22 +1,22 @@
 
-![chiaki-ng Logo](gui/res/chiaking-logo.svg)
+![chiaki-ngx Logo](gui/res/chiaking-logo.svg)
 
-# [chiaki-ng](https://chiaki-ng.github.io/chiaki-ng/)
+# [chiaki-ngx](https://chiaki-ng.github.io/chiaki-ng/)
 
 An open source PlayStation remote play project serving as the next-generation of Chiaki with improvements and ongoing support now that the original Chiaki project is in maintenance mode only. [Click here to see the accompanying site for documentation, updates and more](https://chiaki-ng.github.io/chiaki-ng/).
 
 ## Discord
-[chiaki-ng community Discord](https://discord.gg/tAMbRuwXDH)
+[chiaki-ngx community Discord](https://discord.gg/tAMbRuwXDH)
 
 ## Official downloads
-Only download chiaki-ng from these sources:
+Only download chiaki-ngx from these sources:
 
 - [GitHub Releases](https://github.com/chiaki-ng/chiaki-ng/releases)
 - [Flathub](https://flathub.org/apps/io.github.streetpea.Chiaki4deck)
 - winget: `winget install --id=StreetPea.chiaki-ng -e`
 - Homebrew: `brew install --cask streetpea/streetpea/chiaki-ng`
 
-Other websites offering chiaki-ng downloads, such as chiaki-ng.com, are not run by this project, and we can't vouch for the files they serve.
+Other websites offering chiaki-ngx downloads, such as chiaki-ng.com, are not run by this project, and we can't vouch for the files they serve.
 
 ## Disclaimer
 This project is not endorsed or certified by Sony Interactive Entertainment LLC.
@@ -35,6 +35,7 @@ context, an offline JMdict touch dictionary, and Steam Deck paddle shortcuts.
 - Architecture and upstream hook points: [`docs/translator/ARCHITECTURE.md`](docs/translator/ARCHITECTURE.md)
 - Roadmap and verification status: [`docs/translator/ROADMAP.md`](docs/translator/ROADMAP.md)
 - Build: `-DCHIAKI_ENABLE_TRANSLATOR=ON -DTRANS_ENABLE_ONNXRUNTIME=ON`
+- macOS (Homebrew dependencies): `scripts/translator/fetch-assets.sh` then `scripts/translator/build-macos.sh`, which builds `build-macos/gui/chiaki.app` with the models bundled (see [`docs/translator/MACOS.md`](docs/translator/MACOS.md))
 - Optional offline translation: `-DTRANS_ENABLE_CTRANSLATE2=ON` plus an NLLB model (see `docs/translator/OFFLINE_NLLB.md`)
 - Core tests without the GUI: `cmake -S translator_core -B build-core && cmake --build build-core && ctest --test-dir build-core`
 

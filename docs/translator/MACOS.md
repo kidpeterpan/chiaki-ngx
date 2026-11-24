@@ -19,7 +19,7 @@ brew install cmake ninja qt libplacebo ffmpeg onnxruntime miniupnpc json-c \
   openssl@3 opus sdl2-compat
 ```
 
-> `openssl@3` จำเป็นเพราะ bundled curl ของ chiaki-ng ยังไม่รองรับ OpenSSL 4 ได้ทั้งหมด
+> `openssl@3` จำเป็นเพราะ bundled curl ของ chiaki-ngx ยังไม่รองรับ OpenSSL 4 ได้ทั้งหมด
 > และบน Homebrew รุ่นใหม่ `aia_openssl.c` อาจถูก compile ด้วย header OpenSSL 4
 > จึงต้อง link `libcrypto` 4 เพิ่ม; สคริปต์ด้านล่างจัดการให้อัตโนมัติ
 

@@ -8,7 +8,7 @@ Group (EDRDG).
 - License: **Creative Commons Attribution-ShareAlike 4.0 International**
   (CC BY-SA 4.0). See <https://www.edrdg.org/edrdg/licence.html>.
 - The converted database is a derivative work and is distributed under the same
-  license. It is not covered by the AGPL-3.0 license of chiaki-ng/translator.
+  license. It is not covered by the AGPL-3.0 license of chiaki-ngx/translator.
 
 The repository contains only `jmdict.sample.db` (the first 2000 entries, ~1 MB)
 for tests and development. Build the full database before packaging:

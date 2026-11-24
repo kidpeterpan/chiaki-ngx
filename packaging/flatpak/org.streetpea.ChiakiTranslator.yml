@@ -4,7 +4,7 @@
 #   flatpak-builder --user --install --force-clean build-flatpak \
 #     packaging/flatpak/org.streetpea.ChiakiTranslator.yml
 #
-# The chiaki-ng module uses a local directory. Replace it with a git source
+# The chiaki-ngx module uses a local directory. Replace it with a git source
 # pointing at your fork before publishing. The full jmdict.db is not in git;
 # run scripts/translator/fetch-assets.sh first.
 app-id: org.streetpea.ChiakiTranslator
@@ -46,7 +46,7 @@ modules:
         url: https://github.com/microsoft/onnxruntime.git
         tag: v1.22.0
 
-  - name: chiaki-ng-translator
+  - name: chiaki-ngx-translator
     buildsystem: cmake-ninja
     builddir: true
     config-opts:
@@ -68,9 +68,9 @@ modules:
   - name: translator-assets
     buildsystem: simple
     build-commands:
-      - mkdir -p /app/share/chiaki-ng/translator/models /app/share/chiaki-ng/translator/dict
-      - cp assets/models/*.onnx assets/models/japan_dict.txt /app/share/chiaki-ng/translator/models/
-      - cp assets/dict/jmdict.db /app/share/chiaki-ng/translator/dict/
+      - mkdir -p /app/share/chiaki-ngx/translator/models /app/share/chiaki-ngx/translator/dict
+      - cp assets/models/*.onnx assets/models/japan_dict.txt /app/share/chiaki-ngx/translator/models/
+      - cp assets/dict/jmdict.db /app/share/chiaki-ngx/translator/dict/
     sources:
       - type: dir
         path: ../..

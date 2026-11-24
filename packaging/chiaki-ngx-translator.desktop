@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=chiaki-ng Translator
+Name=chiaki-ngx Translator
 GenericName=PlayStation Remote Play with subtitle translation
 Comment=PlayStation Remote Play client with on-device OCR and Japanese-to-Thai subtitle translation
 Exec=chiaki

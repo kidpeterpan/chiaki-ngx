@@ -1,5 +1,5 @@
-name: Sign and notarize chiaki-ng for macOS
-description: Sign chiaki-ng.app with a Developer ID certificate, build and sign the DMG, then notarize and staple it
+name: Sign and notarize chiaki-ngx for macOS
+description: Sign chiaki-ngx.app with a Developer ID certificate, build and sign the DMG, then notarize and staple it
 
 inputs:
   certificate-p12:
@@ -38,7 +38,7 @@ runs:
           --only-binary :all: -r scripts/macos/dmgbuild-requirements.txt
         echo "DMGBUILD=$RUNNER_TEMP/dmgbuild/bin/dmgbuild" >> "$GITHUB_ENV"
 
-    - name: Sign chiaki-ng
+    - name: Sign chiaki-ngx
       shell: bash
       env:
         MACOS_CERT_P12: ${{ inputs.certificate-p12 }}
@@ -47,13 +47,13 @@ runs:
         { read -r keychain; read -r identity; } < <(scripts/macos-keychain.sh import)
         trap 'scripts/macos-keychain.sh delete "$keychain"' EXIT
         test -n "$identity"
-        scripts/macos-sign.sh chiaki-ng.app "$identity"
+        scripts/macos-sign.sh chiaki-ngx.app "$identity"
 
     # Built with no keychain present, since dmgbuild and its dependencies are third-party code
     - name: Build the DMG
       shell: bash
       run: |
-        scripts/macos-dmg.sh chiaki-ng.app "${{ inputs.dmg }}" "${{ inputs.label }}"
+        scripts/macos-dmg.sh chiaki-ngx.app "${{ inputs.dmg }}" "${{ inputs.label }}"
 
     - name: Sign the DMG
       shell: bash

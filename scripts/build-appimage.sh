@@ -121,4 +121,4 @@ for nss_module in libsoftokn3.so libfreebl3.so libfreeblpriv3.so libnssckbi.so; 
         exit 1
     fi
 done
-mv chiaki-ng-${ARCH}.AppImage chiaki-ng.AppImage
+mv chiaki-ngx-${ARCH}.AppImage chiaki-ngx.AppImage

@@ -1,7 +1,7 @@
-# dmgbuild settings for the chiaki-ng DMG: the app beside an Applications shortcut over a background
+# dmgbuild settings for the chiaki-ngx DMG: the app beside an Applications shortcut over a background
 # that says to drag one onto the other. dmgbuild writes the window layout itself, so unlike
 # create-dmg it needs no Finder scripting and works on headless CI runners.
-# Pass -D app=<path to chiaki-ng.app> -D background=<background.tiff>
+# Pass -D app=<path to chiaki-ngx.app> -D background=<background.tiff>
 import os.path
 
 app = defines["app"]

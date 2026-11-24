@@ -18,9 +18,9 @@ script:
       -DCHIAKI_ENABLE_TESTS=OFF
   - cmake --build build-appimage -j$(nproc)
   - DESTDIR=$PWD/AppDir cmake --install build-appimage
-  - mkdir -p AppDir/usr/share/chiaki-ng/translator/models AppDir/usr/share/chiaki-ng/translator/dict
-  - cp assets/models/*.onnx assets/models/japan_dict.txt AppDir/usr/share/chiaki-ng/translator/models/
-  - cp assets/dict/jmdict.db AppDir/usr/share/chiaki-ng/translator/dict/
+  - mkdir -p AppDir/usr/share/chiaki-ngx/translator/models AppDir/usr/share/chiaki-ngx/translator/dict
+  - cp assets/models/*.onnx assets/models/japan_dict.txt AppDir/usr/share/chiaki-ngx/translator/models/
+  - cp assets/dict/jmdict.db AppDir/usr/share/chiaki-ngx/translator/dict/
   - cp packaging/appimage/AppRun AppDir/AppRun
   - chmod +x AppDir/AppRun
 
@@ -28,7 +28,7 @@ AppDir:
   path: ./AppDir
   app_info:
     id: org.streetpea.chiaking.translator
-    name: chiaki-ng-translator
+    name: chiaki-ngx-translator
     icon: chiaki
     version: 1.10.1
     exec: usr/bin/chiaki
@@ -58,7 +58,7 @@ AppDir:
       - /usr/lib/x86_64-linux-gnu/libonnxruntime.so*
   runtime:
     env:
-      CHIAKI_TRANSLATOR_ASSETS: '$APPDIR/usr/share/chiaki-ng/translator'
+      CHIAKI_TRANSLATOR_ASSETS: '$APPDIR/usr/share/chiaki-ngx/translator'
 
 AppImage:
   arch: x86_64

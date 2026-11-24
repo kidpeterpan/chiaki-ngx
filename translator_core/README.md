@@ -31,5 +31,5 @@ Tools:
 - `translator_nllb_probe <model_dir> <spm> <src> <tgt> <text>` (with `TRANS_ENABLE_CTRANSLATE2=ON`)
 - `translator_onnx_tests` (integration; requires `assets/models`)
 
-License: AGPL-3.0-only-OpenSSL, matching chiaki-ng. Bundled models and JMdict
+License: AGPL-3.0-only-OpenSSL, matching chiaki-ngx. Bundled models and JMdict
 have separate licenses (see `assets/models/README.md`, `assets/dict/README.md`).

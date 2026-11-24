@@ -1,4 +1,4 @@
-site_name: chiaki-ng
+site_name: chiaki-ngx
 repo_url: https://github.com/chiaki-ng/chiaki-ng
 site_url: https://chiaki-ng.github.io/chiaki-ng/
 edit_uri: edit/main/docs
@@ -20,7 +20,7 @@ nav:
   - DIY:
     - Building the Flatpak Yourself: diy/buildit.md
     - Locally Building Documentation: diy/builddocs.md
-    - Developing chiaki-ng on Steam Deck: diy/steamdeckdev.md
+    - Developing chiaki-ngx on Steam Deck: diy/steamdeckdev.md
 
 theme:
   favicon: images/chiaking.svg

@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Security fixes go into the latest release of chiaki-ng. Please update to it before reporting an issue.
+Security fixes go into the latest release of chiaki-ngx. Please update to it before reporting an issue.
 
 ## Reporting a Vulnerability
 

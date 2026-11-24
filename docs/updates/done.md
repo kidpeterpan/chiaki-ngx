@@ -21,7 +21,7 @@ You can now use [HDR with your Steam Deck OLED](../setup/configuration.md#hdr-hi
 
 ## Enabled Touchpad for Steam Deck Touchscreen and/or Trackpads 
 
-Added Touchpad support for touchscreens (use outer edges of touchscreen for touchpad click) as well as mouse input (enables trackpads to be fully supported with gestures on touch and touchpad click on click). For an example mapping these in a Steam Deck controller profile, see [Default `chiaki4deck` Layout Touchscreen Mapping](../setup/controlling.md#default-chiaki-ng-layout-touchscreen-mapping){target="_blank" rel="noopener"} and [Default `chiaki4deck` Layout Trackpad Mapping](../setup/controlling.md#default-chiaki-ng-layout-trackpad-mapping){target="_blank" rel="noopener"} respectively. Downloading the updated `chiaki4deck+` controller layout will have these mappings set for your convenience.[^1]
+Added Touchpad support for touchscreens (use outer edges of touchscreen for touchpad click) as well as mouse input (enables trackpads to be fully supported with gestures on touch and touchpad click on click). For an example mapping these in a Steam Deck controller profile, see [Default `chiaki4deck` Layout Touchscreen Mapping](../setup/controlling.md#default-chiaki-ngx-layout-touchscreen-mapping){target="_blank" rel="noopener"} and [Default `chiaki4deck` Layout Trackpad Mapping](../setup/controlling.md#default-chiaki-ngx-layout-trackpad-mapping){target="_blank" rel="noopener"} respectively. Downloading the updated `chiaki4deck+` controller layout will have these mappings set for your convenience.[^1]
 
 ## Enabled Gyro for Steam Deck
 
@@ -37,7 +37,7 @@ Added ability to create a Steam shortcut with the name of your choice and Chiaki
 
 ## Enabled Haptics for Steam Deck and DualSense controller + adaptive Triggers for DualSense
 
-Haptics enabled for PlayStation 5 thanks to [Johannes Baiter](https://github.com/jbaiter){target="_blank" rel="noopener"}. You can use a USB connected DualSense for haptics and adaptive triggers or a bluetooth connected DualSense for just adaptive triggers. To use these features for the DualSense in game mode, please disable Steam Input for the DualSense controller following the "Turning off Steam Input" tab in [this section](../setup/controlling.md#enabling-chiaki-ng-to-work-with-dualsense-dualshock-4){target="_blank" rel="noopener"}.[^2].
+Haptics enabled for PlayStation 5 thanks to [Johannes Baiter](https://github.com/jbaiter){target="_blank" rel="noopener"}. You can use a USB connected DualSense for haptics and adaptive triggers or a bluetooth connected DualSense for just adaptive triggers. To use these features for the DualSense in game mode, please disable Steam Input for the DualSense controller following the "Turning off Steam Input" tab in [this section](../setup/controlling.md#enabling-chiaki-ngx-to-work-with-dualsense-dualshock-4){target="_blank" rel="noopener"}.[^2].
 
 I have also added the capability to play the haptics via the Steam Deck controller using the native interface I added.
 
@@ -111,7 +111,7 @@ This skips the need to visit the configuration screen each time. Use auto-connec
 
 ## Enabled Touchpad and Gyro Controls with DualSense/DualShock 4 Controller for Flatpak
 
-This makes it as easy as possible for Steam Deck users to use touchpad and gyro support with their DualSense or DualShock 4 controller. See [Using a DualSense and/or DualShock4 Controller with `chiaki-ng`](../setup/controlling.md#using-a-dualsense-andor-dualshock4-controller-with-chiaki-ng){target="_blank" rel="noopener"} to set it up for yourself.[^3]
+This makes it as easy as possible for Steam Deck users to use touchpad and gyro support with their DualSense or DualShock 4 controller. See [Using a DualSense and/or DualShock4 Controller with `chiaki-ngx`](../setup/controlling.md#using-a-dualsense-andor-dualshock4-controller-with-chiaki-ngx){target="_blank" rel="noopener"} to set it up for yourself.[^3]
 The DualSense/DualShock 4 touchpad and gyro controls work with the binary version of Chiaki but don't work with the official flatpak version. Luckily for you, they now work with the `chiaki4deck` flatpak! :smile:
 
 [^1]: merged upstream, but not yet released in official flatpak

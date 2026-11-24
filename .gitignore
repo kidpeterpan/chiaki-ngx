@@ -21,7 +21,7 @@ appdir
 /sdl2-*
 /protoc*
 /openssl*
-scripts/chiaki-ng.iss
+scripts/chiaki-ngx.iss
 scripts/Output
 .vs
 CMakeSettings.json

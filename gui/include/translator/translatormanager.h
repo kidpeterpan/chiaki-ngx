@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
-// Qt adapter between chiaki-ng's QML frontend and the Qt-free translator core.
+// Qt adapter between chiaki-ngx's QML frontend and the Qt-free translator core.
 // Registered as the `Translator` QML singleton.
 #pragma once
 

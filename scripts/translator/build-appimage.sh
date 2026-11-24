@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BUILD="$ROOT/build-appimage"
 APPDIR="$ROOT/AppDir"
-OUT="$ROOT/chiaki-ng-translator-x86_64.AppImage"
+OUT="$ROOT/chiaki-ngx-translator-x86_64.AppImage"
 ONNXRUNTIME_ROOT="${ONNXRUNTIME_ROOT:-/usr}"
 
 command -v linuxdeploy >/dev/null || { echo "linuxdeploy not found on PATH" >&2; exit 1; }
@@ -32,17 +32,17 @@ cmake --build "$BUILD" -j"$(nproc)"
 rm -rf "$APPDIR"
 DESTDIR="$APPDIR" cmake --install "$BUILD"
 
-mkdir -p "$APPDIR/usr/share/chiaki-ng/translator/models" "$APPDIR/usr/share/chiaki-ng/translator/dict"
+mkdir -p "$APPDIR/usr/share/chiaki-ngx/translator/models" "$APPDIR/usr/share/chiaki-ngx/translator/dict"
 cp "$ROOT"/assets/models/*.onnx "$ROOT/assets/models/japan_dict.txt" \
-	"$APPDIR/usr/share/chiaki-ng/translator/models/"
-cp "$ROOT/assets/dict/jmdict.db" "$APPDIR/usr/share/chiaki-ng/translator/dict/"
+	"$APPDIR/usr/share/chiaki-ngx/translator/models/"
+cp "$ROOT/assets/dict/jmdict.db" "$APPDIR/usr/share/chiaki-ngx/translator/dict/"
 
 cp "$ROOT/packaging/appimage/AppRun" "$APPDIR/AppRun"
 chmod +x "$APPDIR/AppRun"
-cp "$ROOT/packaging/chiaki-ng-translator.desktop" "$APPDIR/usr/share/applications/"
+cp "$ROOT/packaging/chiaki-ngx-translator.desktop" "$APPDIR/usr/share/applications/"
 
 linuxdeploy --appdir "$APPDIR" \
-	--desktop-file "$APPDIR/usr/share/applications/chiaki-ng-translator.desktop" \
+	--desktop-file "$APPDIR/usr/share/applications/chiaki-ngx-translator.desktop" \
 	--icon-file "$ROOT/gui/chiaking.png" \
 	--plugin qt --output appimage
 

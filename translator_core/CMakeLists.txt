@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # This file is usable both as a standalone project (for fast core tests) and as
-# a subdirectory of the chiaki-ng fork (add_subdirectory(translator_core)).
+# a subdirectory of the chiaki-ngx fork (add_subdirectory(translator_core)).
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 	set(TRANS_STANDALONE ON)
 	project(chiaki_translator_core LANGUAGES CXX)

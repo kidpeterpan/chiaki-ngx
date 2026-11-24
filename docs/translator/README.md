@@ -1,6 +1,6 @@
-# chiaki-ng Translator
+# chiaki-ngx Translator
 
-ส่วนเสริมของ chiaki-ng สำหรับแปลซับไตเติลเกม PlayStation 5 แบบเรียลไทม์บน Steam Deck
+ส่วนเสริมของ chiaki-ngx สำหรับแปลซับไตเติลเกม PlayStation 5 แบบเรียลไทม์บน Steam Deck
 ทำงานในเครื่อง (on-device OCR) แล้วเลือกแปลผ่าน Gemini/DeepL หรือเอาต์พุตข้อความไปใช้ต่อ
 
 > สถานะ: โมดูล `translator_core` และตัวเชื่อม Qt/QML ถูกเขียนและทดสอบแกนหลักครบแล้ว
@@ -135,6 +135,6 @@ CHIAKI_TRANSLATOR_ASSETS=$PWD/assets ./build/gui/chiaki
 
 ## Licenses
 
-- โค้ดส่วนนี้: AGPL-3.0-only-OpenSSL ตาม chiaki-ng (ไฟล์ใหม่ใช้ SPDX เดียวกัน)
+- โค้ดส่วนนี้: AGPL-3.0-only-OpenSSL ตาม chiaki-ngx (ไฟล์ใหม่ใช้ SPDX เดียวกัน)
 - PaddleOCR models/dictionary: Apache-2.0
 - JMdict: CC BY-SA 4.0 (EDRDG) — ฐานข้อมูลที่แปลงแล้วเป็น derivative work ภายใต้สัญญาเดียวกัน

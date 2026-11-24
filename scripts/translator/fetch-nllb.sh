@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 # Download the optional offline NLLB-200 CTranslate2 model (~600 MB).
 #
-# The model is NOT distributed with chiaki-ng-translator. NLLB-200 is released
+# The model is NOT distributed with chiaki-ngx-translator. NLLB-200 is released
 # by Meta under CC BY-NC 4.0 (non-commercial). Review that license before use,
 # especially before any commercial distribution.
 set -euo pipefail
@@ -27,7 +27,7 @@ and is distributed under the Creative Commons Attribution-NonCommercial 4.0
 International license (CC BY-NC 4.0).
 https://creativecommons.org/licenses/by-nc/4.0/
 The CTranslate2 conversion here was produced by the model repository author.
-This model is not part of chiaki-ng-translator and must not be redistributed as
+This model is not part of chiaki-ngx-translator and must not be redistributed as
 part of a commercial package without separate permission.
 EOF
 

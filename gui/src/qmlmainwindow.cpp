@@ -2881,9 +2881,9 @@ void QmlMainWindow::setSettings(Settings *new_settings)
     QString profile = settings->GetCurrentProfile();
     qCCritical(chiakiGui) << "Current Profile: " << profile;
     if(profile.isEmpty())
-        QGuiApplication::setApplicationDisplayName("chiaki-ng");
+        QGuiApplication::setApplicationDisplayName("chiaki-ngx");
     else
-        QGuiApplication::setApplicationDisplayName(QString("chiaki-ng:%1").arg(profile));
+        QGuiApplication::setApplicationDisplayName(QString("chiaki-ngx:%1").arg(profile));
     this->setTitle(QGuiApplication::applicationDisplayName());
 }
 
@@ -4954,7 +4954,7 @@ void QmlMainWindow::init(Settings *settings, bool exit_app_on_stream_exit)
             // The last launch closed before Vulkan showed a frame, which is how a crash inside the
             // Vulkan driver or a third-party Vulkan layer looks; keep OpenGL until switched back
             settings->SetRenderBackend(RenderBackend::OpenGL);
-            fallbackToOpenGL(tr("chiaki-ng closed while starting Vulkan last time, so it now uses OpenGL. "
+            fallbackToOpenGL(tr("chiaki-ngx closed while starting Vulkan last time, so it now uses OpenGL. "
                                 "You can switch back under Settings > Video > Renderer Backend."));
             goto renderer_backend_ready;
         }

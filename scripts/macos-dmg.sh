@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Packages chiaki-ng.app as a DMG with an Applications shortcut to drag it onto.
-# usage: macos-dmg.sh <chiaki-ng.app> <output.dmg> [label]
+# Packages chiaki-ngx.app as a DMG with an Applications shortcut to drag it onto.
+# usage: macos-dmg.sh <chiaki-ngx.app> <output.dmg> [label]
 # A label, such as "weekly", is drawn on the background as "WEEKLY BUILD".
 set -euo pipefail
 
 if [[ $# -lt 2 || $# -gt 3 ]]; then
-    echo "usage: $0 <chiaki-ng.app> <output.dmg> [label]" >&2
+    echo "usage: $0 <chiaki-ngx.app> <output.dmg> [label]" >&2
     exit 1
 fi
 
@@ -34,4 +34,4 @@ fi
 rm -f "$dmg"
 "$dmgbuild" -s "$script_dir/macos/dmg-settings.py" \
     -D app="$app" -D background="$work_dir/dmg-background.tiff" \
-    chiaki-ng "$dmg"
+    chiaki-ngx "$dmg"

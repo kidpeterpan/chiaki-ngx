@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
-# Build the translator-enabled chiaki-ng app on macOS and bundle models/dict
+# Build the translator-enabled chiaki-ngx app on macOS and bundle models/dict
 # into chiaki.app/Contents/Resources/translator.
 #
 # Homebrew prerequisites:

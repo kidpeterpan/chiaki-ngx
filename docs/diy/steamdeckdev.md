@@ -1,4 +1,4 @@
-# Developing chiaki-ng updates on Steam Deck
+# Developing chiaki-ngx updates on Steam Deck
 
 This is for contributors that want to make/test updates to the codebase without building a new flatpak each time.
 
@@ -30,10 +30,10 @@ This is for contributors that want to make/test updates to the codebase without 
         ``` bash
         sources:
         - type: dir
-          path: path-to-chiaki-ng-git
+          path: path-to-chiaki-ngx-git
         ```
 
-2. Copy config file from chiaki-ng
+2. Copy config file from chiaki-ngx
 
     ``` bash
     cp ~/.var/app/io.github.streetpea.Chiaki4deck/config/Chiaki/Chiaki.conf ~/.var/app/io.github.streetpea.Chiaki4deck-devel/config/Chiaki/Chiaki.conf 
@@ -77,7 +77,7 @@ This is for contributors that want to make/test updates to the codebase without 
 
 ## Creating and Debugging Builds without New Flatpak Build
 
-1. Enter the development version of the flatpak with the chiaki-ng source code mounted with:
+1. Enter the development version of the flatpak with the chiaki-ngx source code mounted with:
 
     ``` bash
     flatpak run --command=bash --devel io.github.streetpea.Chiaki4deck-devel
@@ -106,7 +106,7 @@ This is for contributors that want to make/test updates to the codebase without 
             cmake -DCMAKE_BUILD_TYPE=Debug ..
             ```
         
-        5. Build `chiaki-ng`
+        5. Build `chiaki-ngx`
 
             ``` bash
             make
@@ -132,7 +132,7 @@ This is for contributors that want to make/test updates to the codebase without 
             cmake -DCMAKE_BUILD_TYPE=Release ..
             ```
         
-        5. Build `chiaki-ng`
+        5. Build `chiaki-ngx`
 
             ``` bash
             make

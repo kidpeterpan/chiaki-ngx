@@ -154,6 +154,8 @@ QString TranslatorManager::assetPath(const QString &relative) const
 		roots << QString::fromLocal8Bit(environment);
 	const QString app_dir = QCoreApplication::applicationDirPath();
 	roots << app_dir + QStringLiteral("/translator");
+	roots << app_dir + QStringLiteral("/../share/chiaki-ngx/translator");
+	// Keep the pre-rename install location working for packaged builds.
 	roots << app_dir + QStringLiteral("/../share/chiaki-ng/translator");
 	roots << app_dir + QStringLiteral("/../Resources/translator");
 	roots << QDir::currentPath() + QStringLiteral("/assets");

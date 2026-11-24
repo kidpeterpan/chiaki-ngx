@@ -50,7 +50,7 @@ func render(scale: CGFloat, to url: URL) throws {
     let paragraph = NSMutableParagraphStyle()
     paragraph.alignment = .center
     let title = NSAttributedString(
-        string: "Drag chiaki-ng to Applications",
+        string: "Drag chiaki-ngx to Applications",
         attributes: [
             .font: NSFont.systemFont(ofSize: 17, weight: .semibold),
             .foregroundColor: NSColor(white: 0.92, alpha: 1),

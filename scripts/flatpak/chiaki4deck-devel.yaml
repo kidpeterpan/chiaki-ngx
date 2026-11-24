@@ -427,7 +427,7 @@ modules:
     post-install:
       - mv /app/lib/pkgconfig/sdl2-compat.pc /app/lib/pkgconfig/sdl2.pc
 
-  - name: chiaki-ng
+  - name: chiaki-ngx
     buildsystem: cmake-ninja
     builddir: true
     sources:

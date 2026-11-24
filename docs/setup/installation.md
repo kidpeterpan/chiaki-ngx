@@ -1,8 +1,8 @@
-# Installing `chiaki-ng`
+# Installing `chiaki-ngx`
 
-!!! Warning "Only download `chiaki-ng` from official sources"
+!!! Warning "Only download `chiaki-ngx` from official sources"
 
-    The official sources are the [GitHub releases page](https://github.com/chiaki-ng/chiaki-ng/releases){target="_blank" rel="noopener"}, [Flathub](https://flathub.org/apps/io.github.streetpea.Chiaki4deck){target="_blank" rel="noopener"}, winget (`winget install --id=StreetPea.chiaki-ng -e`) and the Homebrew cask below. Other websites offering `chiaki-ng` downloads, such as chiaki-ng.com, are not run by this project, and we can't vouch for the files they serve.
+    The official sources are the [GitHub releases page](https://github.com/chiaki-ng/chiaki-ng/releases){target="_blank" rel="noopener"}, [Flathub](https://flathub.org/apps/io.github.streetpea.Chiaki4deck){target="_blank" rel="noopener"}, winget (`winget install --id=StreetPea.chiaki-ng -e`) and the Homebrew cask below. Other websites offering `chiaki-ngx` downloads, such as chiaki-ng.com, are not run by this project, and we can't vouch for the files they serve.
 
 === "Linux Flatpak"
 
@@ -16,9 +16,9 @@
 
             ![Open Discover](images/OpenDiscover.png)
 
-        2. Search for `chiaki-ng` in the search bar
+        2. Search for `chiaki-ngx` in the search bar
 
-            ![Install chiaki-ng](images/InstallChiaking.png)
+            ![Install chiaki-ngx](images/InstallChiaking.png)
 
         3. Click Install
 
@@ -30,9 +30,9 @@
             flatpak install -y io.github.streetpea.Chiaki4deck
             ```
 
-    !!! Note "About `chiaki-ng`"
+    !!! Note "About `chiaki-ngx`"
 
-        The above instructions are for the official `chiaki-ng` flatpak on Flathub.
+        The above instructions are for the official `chiaki-ngx` flatpak on Flathub.
         
         However, you can also build the flatpak yourself (recommended for users who want to add their own source code changes on top of the ones I've made) by following the instructions in [Building the flatpak yourself](../diy/buildit.md){target="_blank" rel="noopener"}.
 
@@ -50,13 +50,13 @@
 
     1. Download the appopriate package from the [releases page](https://github.com/chiaki-ng/chiaki-ng/releases){target="_blank" rel="noopener"} on GitHub (for macOS, use the Apple Silicon `-arm64` package, which requires macOS 15 (Sequoia) or later; Intel `-amd64`/`-x86_64` packages are no longer built)
 
-## If `chiaki-ng` Doesn't Open or Shows a Blank Window
+## If `chiaki-ngx` Doesn't Open or Shows a Blank Window
 
-This usually means Vulkan isn't working on your system, for example because of an outdated graphics driver or another program's Vulkan layer (screen recorders and game launchers can install these). If `chiaki-ng` crashes while starting Vulkan, it switches to OpenGL by itself the next time you open it. If it opens to a blank or white window instead, start it once with the `--opengl` option, which switches the renderer to OpenGL from then on:
+This usually means Vulkan isn't working on your system, for example because of an outdated graphics driver or another program's Vulkan layer (screen recorders and game launchers can install these). If `chiaki-ngx` crashes while starting Vulkan, it switches to OpenGL by itself the next time you open it. If it opens to a blank or white window instead, start it once with the `--opengl` option, which switches the renderer to OpenGL from then on:
 
 === "Windows"
 
-    Open `chiaki-ng (OpenGL)` from the Start menu. With the portable package, run `chiaki.exe --opengl` from a command prompt in its folder.
+    Open `chiaki-ngx (OpenGL)` from the Start menu. With the portable package, run `chiaki.exe --opengl` from a command prompt in its folder.
 
 === "Linux Flatpak"
 
@@ -67,13 +67,13 @@ This usually means Vulkan isn't working on your system, for example because of a
 === "Linux AppImage"
 
     ```
-    ./chiaki-ng.AppImage_x86_64 --opengl
+    ./chiaki-ngx.AppImage_x86_64 --opengl
     ```
 
 === "MacOS"
 
     ```
-    /Applications/chiaki-ng.app/Contents/MacOS/chiaki --opengl
+    /Applications/chiaki-ngx.app/Contents/MacOS/chiaki --opengl
     ```
 
 You can switch back to Vulkan later under Settings > Video > Renderer Backend. The OpenGL renderer doesn't support HDR.

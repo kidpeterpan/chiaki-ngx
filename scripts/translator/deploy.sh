@@ -3,13 +3,13 @@
 # Cross-deploy from a development PC to a Steam Deck over SSH.
 #
 #   DECK_HOST=steamdeck scripts/translator/deploy.sh
-#   DECK_HOST=deck@192.168.1.42 DECK_DEST='~/Applications/chiaki-ng-translator' \
+#   DECK_HOST=deck@192.168.1.42 DECK_DEST='~/Applications/chiaki-ngx-translator' \
 #     scripts/translator/deploy.sh --run
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DECK_HOST="${DECK_HOST:-steamdeck}"
-DECK_DEST="${DECK_DEST:-~/Applications/chiaki-ng-translator}"
+DECK_DEST="${DECK_DEST:-~/Applications/chiaki-ngx-translator}"
 BUILD_DIR="${BUILD_DIR:-$ROOT/build-deck}"
 ONNXRUNTIME_ROOT="${ONNXRUNTIME_ROOT:-/usr}"
 RUN=0
@@ -37,6 +37,6 @@ EOF
 chmod +x $DECK_DEST/run.sh"
 
 if [[ $RUN -eq 1 ]]; then
-	ssh "$DECK_HOST" "pkill -x chiaki 2>/dev/null || true; cd $DECK_DEST && ./run.sh >/tmp/chiaki-ng-translator.log 2>&1 &"
-	echo "started on $DECK_HOST (log: /tmp/chiaki-ng-translator.log)"
+	ssh "$DECK_HOST" "pkill -x chiaki 2>/dev/null || true; cd $DECK_DEST && ./run.sh >/tmp/chiaki-ngx-translator.log 2>&1 &"
+	echo "started on $DECK_HOST (log: /tmp/chiaki-ngx-translator.log)"
 fi

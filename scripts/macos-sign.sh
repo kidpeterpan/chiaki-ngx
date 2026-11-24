@@ -1,6 +1,6 @@
 #!/bin/bash
-# Sign chiaki-ng.app inside out with a Developer ID identity and the hardened runtime, so it can be notarized.
-# Usage: macos-sign.sh <path/to/chiaki-ng.app> <identity>
+# Sign chiaki-ngx.app inside out with a Developer ID identity and the hardened runtime, so it can be notarized.
+# Usage: macos-sign.sh <path/to/chiaki-ngx.app> <identity>
 set -euo pipefail
 
 app="$1"

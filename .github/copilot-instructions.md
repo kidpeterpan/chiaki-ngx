@@ -1,4 +1,4 @@
-# Copilot Instructions for chiaki-ng
+# Copilot Instructions for chiaki-ngx
 
 ## Big picture
 - `lib/` is the core Remote Play protocol implementation in C (session, discovery, stream/control, crypto, FEC, audio/video decode hooks). Most feature work should start here.
