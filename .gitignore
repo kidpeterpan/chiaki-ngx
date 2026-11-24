@@ -68,6 +68,7 @@ core.*
 
 # local packaged app artifacts
 /dist/
+/dist-ci/
 
 # verification harness logs (scripts/verify.sh)
 /.verify-logs/
