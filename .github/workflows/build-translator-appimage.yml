@@ -30,6 +30,7 @@ jobs:
       - name: Build in the upstream Ubuntu 20.04 builder
         run: |
           podman run --rm --user 0 \
+            --device /dev/fuse --cap-add SYS_ADMIN \
             -v "$PWD:/build/chiaki" \
             -v /tmp/ort:/ort:ro \
             -w /build/chiaki \
