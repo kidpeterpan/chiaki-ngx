@@ -4,6 +4,7 @@
 ทำงานในเครื่อง (on-device OCR) แล้วเลือกแปลผ่าน Gemini/DeepL หรือเอาต์พุตข้อความไปใช้ต่อ
 
 > สถานะ: โมดูล `translator_core` และตัวเชื่อม Qt/QML ถูกเขียนและทดสอบแกนหลักครบแล้ว
+> (repository health `scripts/verify.sh --full` PASS ทุก stage)
 > (63 unit tests + 2 integration tests ผ่าน, OCR จริงด้วย ONNX Runtime + PP-OCR,
 > และคอมไพล์ GUI ทั้งโปรเจกต์ผ่านบน macOS) ส่วนการรันบน Steam Deck จริงและการแพ็ก
 > AppImage/Flatpak ต้องทำในรอบถัดไปตาม roadmap

@@ -15,6 +15,8 @@
 | GUI compile (macOS) | `scripts/translator/build-macos.sh` | สำเร็จ + bundle models/dict เข้า `.app` + ad-hoc sign; เปิดแอปและโหลด Main.qml ได้ |
 | Linux x86_64 (Arch) | Docker + clang + Qt6/FFmpeg/libplacebo + ONNX | `translator_tests` 63/63, `translator_onnx_tests` 2/2; full GUI build สำเร็จ |
 | macOS app bundle | `build-macos.sh` + launch | `chiaki.app` มี assets ใน Resources/translator; QML Main โหลดไม่มี translator error |
+| Repo health | `scripts/verify.sh --full` | PASS ทุก stage: env/lint/build-core/test-core/build-release/test-unit/smoke/security (77s) |
+| CI translator tests | GitHub Actions `Translator tests` | success บน main/feature (58a4e0f) |
 | MOC | moc + clang syntax check | ผ่านทั้ง `TranslatorManager` และ `CloudTranslatorBackend` |
 | QML lint | `qmllint TranslatorOverlay.qml` | ไม่มี syntax error (มี warning เรื่อง import/singleton ที่ resolve ตอน runtime) |
 | App launch | `chiaki --help` (offscreen) | เริ่มทำงานถึง renderer init; ไม่ crash จาก translator |
@@ -23,7 +25,7 @@
 
 - รันบน Steam Deck จริง: VA-API 1080p60, Gamescope, touch ROI, paddle L4/R4/L5
 - Gemini/DeepL live API (ต้องมี key) — ทดสอบกับ mock HTTP แล้ว แต่ยังไม่ยิง API จริง
-- AppImage/Flatpak build จริง
+- AppImage/Flatpak build จริง (AppImage ที่ประกอบใน Arch container ตรวจเนื้อหาได้ แต่ยังไม่ยืนยันรันบน SteamOS; ต้อง build บน glibc เก่ากว่า เช่น upstream Ubuntu builder)
 - NLLB บน Steam Deck/การวัด RAM จริง
 
 ## วิธีรันซ้ำในเครื่องนี้

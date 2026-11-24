@@ -49,7 +49,8 @@
 - [x] L4/R4/L5/R5 ผ่าน SDL paddle + F13–F15 สำรอง
 - [x] Backlog และตั้งค่าใน overlay
 - [x] AppImageBuilder.yml, Flatpak manifest, AppRun, build script
-- [ ] สร้าง AppImage/Flatpak จริงและทดสอบ Add to Steam
+- [~] ประกอบ AppImage ใน Arch container ได้ แต่ยังไม่ทดสอบรันบน SteamOS/glibc; Flatpak ยังไม่ build
+- [x] `scripts/verify.sh --full` ผ่านทุก stage และ CI Translator tests ผ่าน
 
 ## งานถัดไปที่Recommended (เรียงตามความเสี่ยง)
 
