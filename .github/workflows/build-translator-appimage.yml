@@ -42,7 +42,7 @@ jobs:
             -e TRANS_ONNXRUNTIME_LIBRARY=/ort/lib/libonnxruntime.so \
             -e TRANS_EXTRA_LD_LIBRARY_PATH=/ort/lib \
             docker.io/streetpea/chiaki-ng-builder:qt6.9.3 \
-            bash -lc 'scripts/build-appimage.sh /build/appdir'
+            bash -lc 'apt-get update -qq && apt-get install -y -qq libsqlite3-dev && scripts/build-appimage.sh /build/appdir'
 
       - name: Verify AppImage contents and smoke test
         run: |
