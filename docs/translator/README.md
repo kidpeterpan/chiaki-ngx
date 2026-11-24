@@ -83,6 +83,8 @@ python3 translator_core/tools/build_jmdict.py \
 
 ## Build ทั้งโปรเจกต์
 
+macOS: ใช้ [`build-macos.sh`](../../scripts/translator/build-macos.sh) พร้อมคู่มือ [MACOS.md](MACOS.md) (มีรายละเอียดใน [MACOS.md](MACOS.md))
+
 ```bash
 cmake -S . -B build -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \

@@ -472,9 +472,22 @@ Item {
 
             Item { height: 1; width: 1 }
 
-            Button {
-                text: "Close"
-                onClicked: root.settingsOpen = false
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                Button {
+                    text: "Translate now"
+                    onClicked: Translator.manualTranslate()
+                }
+                Button {
+                    text: Translator.overlayVisible ? "Hide subtitles" : "Show subtitles"
+                    onClicked: Translator.toggleOverlay()
+                }
+                Item { Layout.fillWidth: true }
+                Button {
+                    text: "Close"
+                    onClicked: root.settingsOpen = false
+                }
             }
         }
     }

@@ -306,6 +306,15 @@ if(CHIAKI_ENABLE_BOREALIS)
 endif()
 
 if(TARGET translator_core)
-	install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/models DESTINATION share/chiaki-ng/translator)
-	install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/dict DESTINATION share/chiaki-ng/translator OPTIONAL)
+	if(APPLE)
+		# MACOSX_BUNDLE installs to bin/chiaki.app; keep the QML/asset lookup
+		# path (applicationDirPath()/../Resources/translator) valid.
+		install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/models
+			DESTINATION bin/chiaki.app/Contents/Resources/translator)
+		install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/dict
+			DESTINATION bin/chiaki.app/Contents/Resources/translator OPTIONAL)
+	else()
+		install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/models DESTINATION share/chiaki-ng/translator)
+		install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/dict DESTINATION share/chiaki-ng/translator OPTIONAL)
+	endif()
 endif()

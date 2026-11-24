@@ -12,8 +12,9 @@
 | NLLB offline (CT2) | `translator_nllb_probe` | ja→th ถูกต้อง 267–429 ms, peak RSS 1.23 GB (host) |
 | Cloud backends (mock) | `translator_cloud_tests` | 5/5 ผ่าน: Gemini, worker-thread dispatch, DeepL, HTTP 400, timeout |
 | JMdict เต็ม | `build_jmdict.py` + `dict_probe` | 219,217 entries, 500,240 words, 83 MB; ค้น 食べる/食べた ผ่าน |
-| GUI compile (macOS) | `cmake --build /tmp/build-gui --target chiaki` | สำเร็จรวม `translator_core`, manager, cloud backends, QML resource, NLLB |
+| GUI compile (macOS) | `scripts/translator/build-macos.sh` | สำเร็จ + bundle models/dict เข้า `.app` + ad-hoc sign; เปิดแอปและโหลด Main.qml ได้ |
 | Linux x86_64 (Arch) | Docker + clang + Qt6/FFmpeg/libplacebo + ONNX | `translator_tests` 63/63, `translator_onnx_tests` 2/2; full GUI build สำเร็จ |
+| macOS app bundle | `build-macos.sh` + launch | `chiaki.app` มี assets ใน Resources/translator; QML Main โหลดไม่มี translator error |
 | MOC | moc + clang syntax check | ผ่านทั้ง `TranslatorManager` และ `CloudTranslatorBackend` |
 | QML lint | `qmllint TranslatorOverlay.qml` | ไม่มี syntax error (มี warning เรื่อง import/singleton ที่ resolve ตอน runtime) |
 | App launch | `chiaki --help` (offscreen) | เริ่มทำงานถึง renderer init; ไม่ crash จาก translator |

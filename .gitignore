@@ -65,3 +65,6 @@ __pycache__/
 core
 core.*
 *.core
+
+# local packaged app artifacts
+/dist/
