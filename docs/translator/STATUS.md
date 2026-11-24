@@ -15,6 +15,7 @@
 | GUI compile (macOS) | `scripts/translator/build-macos.sh` | สำเร็จ + bundle models/dict เข้า `.app` + ad-hoc sign; เปิดแอปและโหลด Main.qml ได้ |
 | Linux x86_64 (Arch) | Docker + clang + Qt6/FFmpeg/libplacebo + ONNX | `translator_tests` 63/63, `translator_onnx_tests` 2/2; full GUI build สำเร็จ |
 | macOS app bundle | `build-macos.sh` + launch | `chiaki.app` มี assets ใน Resources/translator; QML Main โหลดไม่มี translator error |
+| macOS DMG | CI `Build chiaki-ngx macOSX` + full dict | สำเร็จ; mount DMG แล้ว `--help` ทำงาน, ONNX ถูก bundle ใน `Frameworks` |
 | Repo health | `scripts/verify.sh --full` | PASS ทุก stage: env/lint/build-core/test-core/build-release/test-unit/smoke/security (77s) |
 | CI translator tests | GitHub Actions `Translator tests` | success บน main/feature (58a4e0f) |
 | MOC | moc + clang syntax check | ผ่านทั้ง `TranslatorManager` และ `CloudTranslatorBackend` |
