@@ -1,0 +1,65 @@
+name: Build translator AppImage x86_64
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  appimage:
+    name: Translator AppImage (Ubuntu 20.04 builder)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman python3 curl unzip
+
+      - name: Fetch models and full JMdict
+        run: scripts/translator/fetch-assets.sh
+
+      - name: Fetch Linux ONNX Runtime
+        run: scripts/translator/fetch-ort-linux.sh /tmp/ort
+
+      - name: Build in the upstream Ubuntu 20.04 builder
+        run: |
+          podman run --rm --user 0 \
+            -v "$PWD:/build/chiaki" \
+            -v /tmp/ort:/ort:ro \
+            -w /build/chiaki \
+            -e QT_PATH=/opt/Qt \
+            -e QT_VERSION=6.9.* \
+            -e GCC_STRING=gcc_64 \
+            -e CHIAKI_ENABLE_TRANSLATOR=ON \
+            -e TRANS_ENABLE_ONNXRUNTIME=ON \
+            -e TRANS_ONNXRUNTIME_INCLUDE_DIR=/ort/include/onnxruntime \
+            -e TRANS_ONNXRUNTIME_LIBRARY=/ort/lib/libonnxruntime.so \
+            -e TRANS_EXTRA_LD_LIBRARY_PATH=/ort/lib \
+            docker.io/streetpea/chiaki-ng-builder:qt6.9.3 \
+            bash -lc 'scripts/build-appimage.sh /build/appdir'
+
+      - name: Verify AppImage contents and smoke test
+        run: |
+          test -s appimage/chiaki-ngx.AppImage
+          chmod +x appimage/chiaki-ngx.AppImage
+          ./appimage/chiaki-ngx.AppImage --appimage-extract >/dev/null
+          test -f squashfs-root/AppRun
+          test -f squashfs-root/usr/share/chiaki-ngx/translator/models/japan_PP-OCRv3_rec.onnx
+          test -f squashfs-root/usr/share/chiaki-ngx/translator/dict/jmdict.db
+          test -f squashfs-root/usr/lib/libonnxruntime.so.1
+          QT_QPA_PLATFORM=offscreen SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy \
+            ./squashfs-root/AppRun --help | head -5
+          echo "appimage contents and startup OK"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chiaki-ngx-translator-x86_64.AppImage
+          path: appimage/chiaki-ngx.AppImage
+          if-no-files-found: error
+          retention-days: 7

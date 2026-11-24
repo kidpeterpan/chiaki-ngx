@@ -36,6 +36,10 @@ qt-cmake \
 	-DCHIAKI_ENABLE_TESTS=ON \
 	-DCHIAKI_ENABLE_GUI=ON \
 	-DCHIAKI_GUI_ENABLE_SDL_GAMECONTROLLER=ON \
+	-DCHIAKI_ENABLE_TRANSLATOR=${CHIAKI_ENABLE_TRANSLATOR:-OFF} \
+	-DTRANS_ENABLE_ONNXRUNTIME=${TRANS_ENABLE_ONNXRUNTIME:-OFF} \
+	-DTRANS_ONNXRUNTIME_INCLUDE_DIR=${TRANS_ONNXRUNTIME_INCLUDE_DIR:-} \
+	-DTRANS_ONNXRUNTIME_LIBRARY=${TRANS_ONNXRUNTIME_LIBRARY:-} \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	..
 cd ..
@@ -75,7 +79,7 @@ export ARCH="$(uname -m)"
 curl -L -O https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-${ARCH}.AppImage
 chmod +x linuxdeploy-${ARCH}.AppImage
 
-export LD_LIBRARY_PATH="${QT_DIR}/${GCC_STRING}/lib:$(pwd)/../build_appimage/third-party/cpp-steam-tools:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="${TRANS_EXTRA_LD_LIBRARY_PATH:-}:${QT_DIR}/${GCC_STRING}/lib:$(pwd)/../build_appimage/third-party/cpp-steam-tools:$LD_LIBRARY_PATH"
 export QML_SOURCES_PATHS="$(pwd)/../gui/src/qml"
 export EXTRA_QT_MODULES="waylandclient;waylandcompositor"
 export EXTRA_PLATFORM_PLUGINS="libqwayland-egl.so;libqwayland-generic.so;libqeglfs.so;libqminimal.so;libqminimalegl.so;libqvkkhrdisplay.so;libqvnc.so;libqoffscreen.so;libqlinuxfb.so"
