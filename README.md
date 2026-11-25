@@ -28,7 +28,7 @@ optional, in-viewport Japanese subtitle translator for Steam Deck and desktop pl
 | Timing | Configurable scan interval and text-stability delay |
 | Controls | Steam Deck L4/R4/L5/R5, touch routing, live enable/disable, remappable hotkeys with key capture |
 | Packaging | Linux AppImage and upstream Flatpak/Windows build paths |
-| Quality | 68 translator-core tests, overlay geometry/preference/shortcut tests, cloud/OCR mock tests, QML smoke checks, and `scripts/verify.sh --full` |
+| Quality | 68 translator-core tests, overlay geometry/preference/shortcut tests, cloud/OCR mocks, controller-driven QML settings tests and `scripts/verify.sh --full` |
 
 The translator is opt-in and disabled by default. Without it, chiaki-ngx behaves like the
 upstream client.
