@@ -16,6 +16,7 @@
 | Linux x86_64 (Arch) | Docker + clang + Qt6/FFmpeg/libplacebo + ONNX | `translator_tests` 63/63, `translator_onnx_tests` 2/2; full GUI build สำเร็จ |
 | macOS app bundle | `build-macos.sh` + launch | `chiaki.app` มี assets ใน Resources/translator; QML Main โหลดไม่มี translator error |
 | Gemini Vision | mock test | ส่งภาพ + ขอ JSON regions พร้อม `translatedText`; pipeline ใช้คำแปลโดยไม่เรียก backend ซ้ำ |
+| Live endpoints | curl (2026-11-25) | Google Translate free ja→th คืนคำแปลจริง; OCR.space `helloworld` อ่าน fixture ได้ `ゲームを続けよう` |
 | Cloud OCR | mock tests | Google Cloud Vision + OCR.space parse ผ่าน; ยังไม่ทดสอบ key จริง |
 | Google translation | mock tests | Google Translate (free) + Google Cloud Translation ผ่าน mock HTTP; ยังไม่ทดสอบ key จริง |
 | RapidOCR PP-OCRv5 | probe | อ่าน `ゲームを続けよう` ได้ conf 1.000, ~29 ms บน M1; เลือกได้ใน QML |
