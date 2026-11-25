@@ -21,14 +21,15 @@ optional, in-viewport Japanese subtitle translator for Steam Deck and desktop pl
 | Area | What chiaki-ngx adds |
 | --- | --- |
 | OCR | PaddleOCR PP-OCRv3, RapidOCR PP-OCRv5, Google Cloud Vision, OCR.space, Gemini Vision, Chrome Screen AI (Linux x86_64) |
-| Translation | Gemini, Google Translate (free), Google Cloud Translation, DeepL, OpenAI-compatible/OpenCode Go, and offline NLLB-200 |
+| Translation | Google Translate (free, the default: no API key needed), Gemini, Google Cloud Translation, DeepL, OpenAI-compatible/OpenCode Go, and offline NLLB-200 |
 | Context | Rolling 3-line dialogue context, LRU translation cache, Levenshtein duplicate suppression |
 | Dictionary | Offline JMdict SQLite lookup with deinflection and tap-to-define |
 | Overlay | Box-accurate multi-block in-place overlay, bottom fallback, configurable auto-hide, font family and size |
 | Timing | Configurable scan interval and text-stability delay |
+| Settings | Steam Deck controller navigation (D-pad moves, left/right changes, A selects, B closes, L1/R1 switch sections), a setup checklist that names what is missing and how to fix it, settings applied when the panel closes |
 | Controls | Steam Deck L4/R4/L5/R5, touch routing, live enable/disable, remappable hotkeys with key capture |
-| Packaging | Linux AppImage and upstream Flatpak/Windows build paths |
-| Quality | 68 translator-core tests, overlay geometry/preference/shortcut tests, cloud/OCR mocks, controller-driven QML settings tests and `scripts/verify.sh --full` |
+| Packaging | Steam Deck / Linux x86_64 AppImage with curl 8.23 on a static OpenSSL 3, plus upstream Flatpak/Windows build paths |
+| Quality | translator-core, cloud backend, cloud OCR, shortcut, preference, overlay geometry and controller-driven QML settings tests, run by `scripts/verify.sh --full` (see [Verification](#verification)); a Chrome Screen AI restart test joins them on Linux once the library is fetched |
 
 The translator is opt-in and disabled by default. Without it, chiaki-ngx behaves like the
 upstream client.
@@ -50,6 +51,28 @@ cmake --build build --target chiaki
 - **Core tests:** `cmake -S translator_core -B build-core -DTRANS_BUILD_TESTS=ON && ctest --test-dir build-core`
 - **Full verification:** `scripts/verify.sh --full`
 
+## Verification
+
+`scripts/verify.sh` is the single health check, run locally and in CI (`.github/workflows/verify.yml`):
+
+| Stage | Checks |
+| --- | --- |
+| `env` | Toolchain, libraries and submodules for the stages being run |
+| `lint` | ShellCheck, actionlint, YAML, qmllint, and leftover pre-rename project names |
+| `build-core`, `test-core` | `translator_core` with warnings as errors, and its tests |
+| `build-release` | The shipping app in Release |
+| `test-unit` | The `lib/` protocol unit tests |
+| `test-gui` | Every translator suite under `gui/tests/translator/`, including the controller-driven settings panel |
+| `smoke` | OCR and dictionary probes on fixtures, and the app's `--help` without touching user settings |
+| `security` | Credential-shaped files, gitleaks, and an osv-scanner audit that fails on HIGH/CRITICAL (rated by CVSS when an advisory has no label) |
+
+- `--quick` runs `env lint build-core test-core` for the inner loop; `--stage NAME` runs one stage and its
+  prerequisites; `--json` prints a machine-readable summary.
+- Runs are locked, time-boxed per stage and logged under `.verify-logs/`; exit codes and rules are in
+  [`AGENTS.md`](AGENTS.md), known gaps in [`scripts/verify/TRIAGE.md`](scripts/verify/TRIAGE.md).
+- `scripts/verify/selftest.sh` tests the harness itself (exit codes, skips, timeouts, the lock,
+  interrupts, JSON, log pruning) with stand-in stages; CI runs it before the full verification.
+
 ## Documentation
 
 - [Translator overview](docs/translator/README.md)
@@ -61,7 +84,9 @@ cmake --build build --target chiaki
 ## Releases
 
 Download the verified Steam Deck AppImage from
-[GitHub Releases](https://github.com/kidpeterpan/chiaki-ngx/releases). macOS DMG builds are no
+[GitHub Releases](https://github.com/kidpeterpan/chiaki-ngx/releases). Versions start at
+`v0.1.0-translator`; the earlier v0.2.x releases were withdrawn (Chrome Screen AI could close the
+app on a settings change, and the bundled curl had HIGH/CRITICAL CVEs). macOS DMG builds are no
 longer published; build from source with the [macOS guide](docs/translator/MACOS.md).
 
 ## Credits and license
