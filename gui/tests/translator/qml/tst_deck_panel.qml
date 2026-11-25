@@ -118,5 +118,28 @@ Item {
             compare(Translator.backendId, "google")
             compare(overlay.engineIssue, "")
         }
+
+        // QmlController keeps sending D-pad, A and L1/R1 as keys during gameplay. Once the
+        // panel is closed none of them may reach a hidden panel control.
+        function test_keys_after_close_do_not_reach_hidden_controls() {
+            Translator.enabled = true
+            openPanel()
+            keyClick(Qt.Key_PageDown)
+            keyClick(Qt.Key_Down)
+            keyClick(Qt.Key_Down)
+            compare(focused().value, 100)
+            keyClick(Qt.Key_Escape)
+            verify(!overlay.settingsOpen)
+            const sectionBefore = overlay.settingsSection
+            keyClick(Qt.Key_Right)
+            keyClick(Qt.Key_Left)
+            keyClick(Qt.Key_Return)
+            keyClick(Qt.Key_PageDown)
+            compare(Translator.scanIntervalMs, 100)
+            verify(Translator.enabled)
+            compare(overlay.settingsSection, sectionBefore)
+            const item = focused()
+            verify(!item || item.deckNavigable !== true, "a Deck control kept focus after close")
+        }
     }
 }

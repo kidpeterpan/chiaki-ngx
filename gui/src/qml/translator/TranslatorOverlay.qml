@@ -29,6 +29,7 @@ Item {
     // setup checklist re-reads it.
     property int keyRevision: 0
     property Item focusBeforeSettings: null
+    readonly property int settingsSection: settingsPanel.section
     readonly property var backendNames: ["Gemini Flash", "Google Translate (free)", "Google Cloud Translation",
         "DeepL", "OpenCode Go", "OpenAI-compatible", "Offline NLLB"]
     // "" when translation can run; otherwise what is missing: "ocr-key", "api-key" or "nllb".
@@ -139,9 +140,19 @@ Item {
             Chiaki.window.releaseInput()
     }
 
+    function isInSettingsPanel(item) {
+        for (let node = item; node; node = node.parent) {
+            if (node === settingsPanel)
+                return true
+        }
+        return false
+    }
+
     onSettingsOpenChanged: {
         if (settingsOpen) {
-            focusBeforeSettings = root.Window.activeFocusItem
+            const previous = root.Window.activeFocusItem
+            focusBeforeSettings = isInSettingsPanel(previous) ? null : previous
+            settingsPanel.section = 0
             Qt.callLater(settingsPanel.focusFirst)
             return
         }
@@ -152,7 +163,11 @@ Item {
             focused.editingFinished()
         if (Translator.enabled && Chiaki.session)
             Translator.applySettings()
-        // Hand focus back so the stream view's own keys keep working.
+        // A hidden item keeps keyboard focus, and QmlController keeps sending the D-pad and
+        // A/B as keys during play. Take focus off the panel's control first: restoring a
+        // focus scope (such as the window's root) would hand focus straight back to it.
+        if (focused && isInSettingsPanel(focused))
+            focused.focus = false
         if (focusBeforeSettings && focusBeforeSettings.visible)
             focusBeforeSettings.forceActiveFocus()
         focusBeforeSettings = null
@@ -727,6 +742,8 @@ Item {
         border.width: 1
 
         Keys.onPressed: function(event) {
+            if (!visible)
+                return
             if (event.key === Qt.Key_Escape)
                 root.settingsOpen = false
             else if (event.key === Qt.Key_PageUp)

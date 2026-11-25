@@ -224,6 +224,23 @@ if(CHIAKI_ENABLE_TESTS AND TARGET translator_core)
 				-import "${CMAKE_CURRENT_SOURCE_DIR}/tests/translator/qml/stubs"
 				-input "${CMAKE_CURRENT_SOURCE_DIR}/tests/translator/qml")
 	endif()
+	# Chrome Screen AI across pipeline restarts, with the real library: Linux only, and only
+	# once scripts/translator/fetch-screenai.sh has fetched it.
+	set(TRANSLATOR_SCREENAI_DIR "${PROJECT_SOURCE_DIR}/assets/models/screenai/resources")
+	if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET Qt6::Core
+			AND EXISTS "${TRANSLATOR_SCREENAI_DIR}/libchromescreenai.so")
+		add_executable(translator_screenai_restart_tests
+			tests/translator/TestScreenAiRestart.cpp
+			include/translator/screenai.h
+			src/translator/screenai.cpp
+		)
+		target_include_directories(translator_screenai_restart_tests PRIVATE include)
+		target_link_libraries(translator_screenai_restart_tests PRIVATE Qt6::Core translator_core ${CMAKE_DL_LIBS})
+		enable_testing()
+		add_test(NAME translator_screenai_restart_tests
+			COMMAND translator_screenai_restart_tests "${TRANSLATOR_SCREENAI_DIR}"
+				"${PROJECT_SOURCE_DIR}/translator_core/tests/fixtures/subtitle.ppm")
+	endif()
 endif()
 if(NOT CHIAKI_ENABLE_FFMPEG_DECODER)
 	message(FATAL_ERROR "Chiaki GUI requires CHIAKI_ENABLE_FFMPEG_DECODER=ON")

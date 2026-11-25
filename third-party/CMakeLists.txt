@@ -68,6 +68,17 @@ if (NOT CHIAKI_IS_SWITCH)
 		set(CURL_DISABLE_INSTALL ON)
 		set(HTTP_ONLY ON)
 		set(ENABLE_WEBSOCKETS ON)
+		# curl 8.x finds dependencies through pkg-config by default, and on Homebrew its find
+		# modules then hand the app's link line bare names (-lnghttp2) without their library
+		# directory. find_library records full paths instead.
+		set(CURL_USE_PKGCONFIG OFF)
+		# Link only what the HTTP_ONLY build uses: libpsl (required by default in curl 8.x) only
+		# serves cookie domains, SSH cannot be reached with HTTP_ONLY, and brotli and zstd
+		# changed from OFF to AUTO in curl 8.x, which would pull new libraries into the app.
+		set(CURL_USE_LIBPSL OFF)
+		set(CURL_USE_LIBSSH2 OFF)
+		set(CURL_BROTLI OFF CACHE STRING "" FORCE)
+		set(CURL_ZSTD OFF CACHE STRING "" FORCE)
 		set(CHIAKI_CURL_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/curl")
 	if(WIN32)
 		include("${PROJECT_SOURCE_DIR}/cmake/CurlSchannelAia.cmake")

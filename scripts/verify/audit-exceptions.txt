@@ -5,3 +5,7 @@
 # file in third-party/nanopb/extra/requirements_lock.txt. Not installed by the build.
 GHSA-7gcm-g887-7qv7 expires=2027-02-22 protobuf 5.29.5 in nanopb dev lock; not shipped; upstream bump pending
 GHSA-5rjg-fvgr-3xxf expires=2027-02-22 setuptools 70.0.0 in nanopb dev lock; not shipped; upstream bump pending
+# T16 follow-up (proposed 2026-11-25 for the repo owner's review in the curl 8.23.0 bump PR,
+# expires 2027-02-25): curl's own HTTP test-suite requirements in
+# third-party/curl/tests/http/requirements.txt. The build sets BUILD_TESTING OFF; not shipped.
+GHSA-v4x8-3wr5-3wq8 expires=2027-02-25 filelock 3.32.7 in curl's HTTP test-suite requirements; not built or shipped

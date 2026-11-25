@@ -32,6 +32,36 @@ builds. **medium** = a gap in coverage or reproducibility. **low** = noise.
   dated entries to `scripts/verify/audit-exceptions.txt`. The second option is a decision for a
   reviewer.
 
+### T16. 22 HIGH and CRITICAL CVEs in the bundled curl (resolved 2026-11-25)
+
+- Was: osv-scanner reported 8 CRITICAL and 14 HIGH CVEs against `third-party/curl` pinned at
+  `75a2079` (curl 8.11.1, 2024-12-11). They carried a CVSS score but no severity label, so the
+  audit had counted them as unrated (T7).
+- Resolved: the submodule is at `curl-8_23_0` (`3163ec06`) and the audit reports none of them.
+  Two follow-ups came with it: `CURL_USE_LIBPSL OFF` in `third-party/CMakeLists.txt` (curl 8.x
+  requires libpsl by default; cookie domains are not used), and `cmake/curl-schannel-aia.patch`
+  regenerated for the new sources (same 40 changed lines; only context moved). The Windows
+  build that applies that patch has not been run locally.
+- The new tree's own HTTP test-suite requirements bring `filelock` 3.32.7 (GHSA-v4x8-3wr5-3wq8,
+  HIGH). The build never installs them; the exception is proposed in
+  `scripts/verify/audit-exceptions.txt` for the repo owner's review.
+
+### T17. Chrome Screen AI aborted the app on any pipeline restart (resolved 2026-11-25)
+
+- Symptom (Steam Deck): with OCR set to Chrome Screen AI, closing the translator settings,
+  turning the translator off and on, or switching OCR away and back closed the app.
+- Cause: every pipeline restart built a new `ScreenAiEngine`, which called
+  `InitOCRUsingCallback` again. libchromescreenai.so aborts on a second initialization
+  (`ocr.cc:539] Check failed: !pipeline_`, SIGABRT), and `dlclose` does not reset it.
+  Reproduced on x86_64 Linux with the real library.
+- Fix: `gui/src/translator/screenai.cpp` loads and initializes the library once per process
+  and never closes it; engines share it.
+- Test: `translator_screenai_restart_tests` (five restarts, then switch away and back, each
+  step must read the fixture text). Registered on Linux once
+  `scripts/translator/fetch-screenai.sh` has fetched the library, so `test-gui` runs it there.
+  It aborts on the previous code. Not run on macOS or in CI, which have no x86_64 Linux job
+  with the library.
+
 ## High
 
 ### T3. Bundled curl needs OpenSSL 3, while one source file needs OpenSSL 4 symbols
@@ -40,7 +70,7 @@ builds. **medium** = a gap in coverage or reproducibility. **low** = noise.
   removed in 4). `lib/src/aia_openssl.c` references `OPENSSL_sk_set_cmp_thunks` and
   `OPENSSL_sk_set_copy_thunks`, which exist only in OpenSSL 4 headers.
 - The harness's `test-unit` stage links both libcrypto builds to get a binary that links.
-  The repo's CI (`.github/workflows/build-macos.yml`) instead runs `brew unlink openssl@4`,
+  The repo's macOS CI (for example `.github/workflows/build-macos-arm.yml`) instead runs `brew unlink openssl@4`,
   so only OpenSSL 3 is visible.
 - Root cause to check: `aia_openssl.c` likely compiles against `/opt/homebrew/include`, which
   holds the OpenSSL 4 headers, because include directories are ordered before `CMAKE_C_FLAGS`.
@@ -75,11 +105,12 @@ builds. **medium** = a gap in coverage or reproducibility. **low** = noise.
 
 ## Medium
 
-### T7. 46 advisories have no severity rating
+### T7. Advisories without a severity rating (mostly resolved 2026-11-25)
 
-- These are counted and not failed, per the threshold policy. Most are in the bundled curl
-  submodule (`third-party/curl`, pinned at `75a2079`), which has about 100 advisory entries.
-- Action: check whether the pinned curl is current. Consider a newer curl submodule commit.
+- Was: 46 advisories had no severity label and were counted, not failed.
+- Resolved: the audit now falls back to the CVSS base score osv-scanner reports (9.0+
+  CRITICAL, 7.0+ HIGH). That surfaced the curl CVEs in T16. One advisory has neither a
+  label nor a score and is still only counted.
 
 ### T8. Shellcheck findings in upstream scripts
 
@@ -134,7 +165,12 @@ builds. **medium** = a gap in coverage or reproducibility. **low** = noise.
   CI's Linux job covers the core stages only; the full gate runs on macOS.
 - Action: extend the Linux CI job once a Qt image or cached dependency set is available.
 
-### T15. The translator cloud backend tests are not run by `--full`
+### T15. The translator cloud backend tests are not run by `--full` (resolved 2026-11-25)
+
+- Resolved: the `test-gui` stage configures a tests-on tree in `build-gui-tests/`, builds only
+  the `translator_*` test targets (read back from ctest) and runs every translator suite,
+  including the controller-driven QML panel suite. Original finding below.
+
 
 - Evidence: `gui/tests/translator/TestCloudBackends.cpp` (target `translator_cloud_tests`, a
   local mock server, no network) is defined in `gui/CMakeLists.txt` only when the GUI and

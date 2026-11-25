@@ -1,8 +1,8 @@
 name: Verify project health
 
 # Runs the same command agents run locally: scripts/verify.sh --full.
-# See AGENTS.md. Keep this file in step with scripts/verify/ and the Brewfile list in
-# scripts/verify/stages/env.sh.
+# See AGENTS.md. Keep this file in step with scripts/verify/ and the install list in
+# scripts/verify/platform.sh (platform_install_hint).
 
 on:
   pull_request:
@@ -36,6 +36,11 @@ jobs:
           cmake --version
           ninja --version
 
+      # The harness's own contract first: a broken harness would make every result below
+      # meaningless.
+      - name: Harness self-test
+        run: scripts/verify/selftest.sh
+
       - name: Full verification
         run: scripts/verify.sh --full
 
@@ -64,6 +69,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential cmake ninja-build libsqlite3-dev \
             python3-venv perl pkg-config
+
+      - name: Harness self-test
+        run: scripts/verify/selftest.sh
 
       - name: Verify core stages without the OCR backend
         env:

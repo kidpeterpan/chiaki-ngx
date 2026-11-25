@@ -9,11 +9,13 @@
 #   --json          machine-readable summary on stdout (progress goes to stderr)
 #   --clean         wipe harness-owned build dirs before building (implied by --full)
 #
-# Stages: env lint build-core test-core build-release test-unit smoke security
+# Stages: env lint build-core test-core build-release test-unit test-gui smoke security
 #
 # Exit codes: 0 PASS, 1 a verification stage failed, 2 environment prerequisite missing
-#             (the env stage failed), 64 usage error, 130/143 interrupted.
+#             (the env stage failed) or another run holds the lock, 64 usage error,
+#             130/143 interrupted.
 # Logs: .verify-logs/<run-id>/<stage>.log (latest run: .verify-logs/latest).
+# The harness's own tests: scripts/verify/selftest.sh.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -21,8 +23,9 @@ cd "$ROOT" || exit 2
 # shellcheck source=verify/lib.sh
 . "$ROOT/scripts/verify/lib.sh"
 
+# Prints the header comment, so the help text and this file cannot drift apart.
 usage() {
-	sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+	awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"
 	exit "${1:-64}"
 }
 
@@ -56,6 +59,7 @@ esac
 
 TRANS_ONNX="${TRANS_ONNX:-ON}"
 case "$TRANS_ONNX" in ON|OFF) ;; *) echo "TRANS_ONNX must be ON or OFF" >&2; exit 64 ;; esac
+validate_timeouts || exit 64
 
 export REPORT_FD=1
 [ "$JSON" -eq 1 ] && REPORT_FD=2
@@ -63,9 +67,9 @@ export REPORT_FD=1
 acquire_lock || exit 2
 
 RUN_ID="$(date +%Y%m%d-%H%M%S)-$$"
-RUN_DIR="$ROOT/.verify-logs/$RUN_ID"
+RUN_DIR="$LOG_ROOT/$RUN_ID"
 mkdir -p "$RUN_DIR"
-ln -sfn "$RUN_ID" "$ROOT/.verify-logs/latest"
+ln -sfn "$RUN_ID" "$LOG_ROOT/latest"
 RESULTS_FILE="$RUN_DIR/results.tsv"
 : >"$RESULTS_FILE"
 
@@ -110,19 +114,22 @@ finish() {
 	exit 1
 }
 
-# Keeps the 20 most recent run directories so .verify-logs/ does not grow forever.
+# Keeps the 20 most recent run directories so .verify-logs/ does not grow forever. Only
+# run directories (named <date>-<time>-<pid>) are candidates: never the latest link.
 prune_old_runs() {
 	local dirs
-	dirs="$(cd "$ROOT/.verify-logs" && ls -1dt */ 2>/dev/null | tail -n +21 || true)"
+	dirs="$(cd "$LOG_ROOT" && ls -1dt [0-9]*-[0-9]*-[0-9]*/ 2>/dev/null | tail -n +21 || true)"
 	[ -n "$dirs" ] || return 0
-	printf '%s\n' "$dirs" | while read -r d; do rm -rf "$ROOT/.verify-logs/${d%/}"; done
+	printf '%s\n' "$dirs" | while read -r d; do rm -rf "${LOG_ROOT:?}/${d%/}"; done
 }
 
 trap 'INTERRUPTED=130; exit 130' INT
 trap 'INTERRUPTED=143; exit 143' TERM
 trap finish EXIT
 
-record_tool_versions
+# The probes start tools such as brew, which can outlive a killed run; without the lock's
+# descriptor they cannot keep holding it.
+record_tool_versions 9>&-
 say "verify: mode=$MODE run=$RUN_ID platform=$PLATFORM clean=$CLEAN TRANS_ONNX=$TRANS_ONNX"
 
 for s in $REQUESTED; do plan_add "$s"; done

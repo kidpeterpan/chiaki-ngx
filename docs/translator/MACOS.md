@@ -2,7 +2,7 @@
 
 ## ดาวน์โหลดสำเร็จรูป
 
-ตั้งแต่ v0.2.12 ไม่มี DMG ใน GitHub Releases แล้ว (release เผยแพร่เฉพาะ Steam Deck AppImage)
+GitHub Releases ไม่มี DMG แล้ว (release เผยแพร่เฉพาะ Steam Deck AppImage)
 ให้ build เองตามหัวข้อด้านล่าง
 
 ## Build เอง
