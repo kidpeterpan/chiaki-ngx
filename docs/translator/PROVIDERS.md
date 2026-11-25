@@ -11,7 +11,7 @@ chiaki-ngx รองรับทั้ง OCR ในเครื่องแล�
 | RapidOCR PP-OCRv5 | on-device ONNX | เลือกได้ใน Settings → OCR | `scripts/translator/fetch-rapidocr.sh` |
 | Google Cloud Vision | cloud | เพิ่มแล้ว (mock test) | API key + Vision API |
 | OCR.space | cloud | เพิ่มแล้ว (mock test) | ฟรี/คีย์ (`helloworld`) |
-| Gemini Vision | cloud (OCR + แปลรวม) | ยังไม่ implement | API key |
+| Gemini Vision | cloud (OCR + แปลรวม) | เพิ่มแล้ว (mock test) | API key |
 | Chrome Screen AI | on-device | ยังไม่ implement | Chromium Screen AI |
 
 RapidOCR ใช้ PP-OCRv5 mobile det + `ch_rec.onnx` + `ch_dict.txt`
@@ -28,7 +28,7 @@ RapidOCR ใช้ PP-OCRv5 mobile det + `ch_rec.onnx` + `ch_dict.txt`
 | DeepL | cloud | มีแล้ว | API key |
 | OpenAI-compatible / OpenCode Go | cloud | มีแล้ว | API key / base URL |
 | NLLB-200 + CTranslate2 | on-device | มีแล้ว (build แยก) | โมเดล ~600 MB |
-| Gemini Vision | cloud (รวม OCR) | ยังไม่ implement | API key |
+| Gemini Vision | cloud (รวม OCR) | เพิ่มแล้ว | API key |
 
 ### Google Translate (free)
 
@@ -51,7 +51,7 @@ RapidOCR ใช้ PP-OCRv5 mobile det + `ch_rec.onnx` + `ch_dict.txt`
 
 ## ที่ยังไม่ได้ทำ
 
-- Gemini Vision แบบส่งภาพรวม OCR + แปลในคำขอเดียว
-- Chrome Screen AI
+- Chrome Screen AI (ต้องใช้ Chromium Screen AI library/protobuf)
 - ทดสอบ provider จริงด้วย API key บน Steam Deck
+- Gemini Vision ยังใช้ชื่อโมเดล `gemini-2.5-flash` คงที่
 - OCR.space rate-limit (10 ครั้ง/10 นาที) ยังไม่ได้ทำ local throttling

@@ -58,6 +58,7 @@ public:
 			return {};
 		OcrLine line;
 		line.text = text;
+		line.translated_text = translated;
 		line.confidence = confidence;
 		line.box = Rect{0, 0, image.width, image.height};
 		return {line};
@@ -67,6 +68,7 @@ public:
 	bool ready() const override { return true; }
 
 	std::string text = "こんにちは";
+	std::string translated;
 	float confidence = 0.94f;
 	std::atomic<int> calls{0};
 };
@@ -227,6 +229,26 @@ TEST(pipeline_manual_trigger_skips_the_stability_wait)
 
 	ASSERT_TRUE(collector->waitForItems(1));
 	ASSERT_EQ(collector->items[0].source_text, "こんにちは");
+	pipeline.stop();
+}
+
+TEST(pipeline_uses_translation_from_a_vision_ocr_engine)
+{
+	auto ocr = std::make_shared<FakeOcrEngine>();
+	auto backend = std::make_shared<FakeBackend>();
+	auto collector = std::make_shared<Collector>();
+
+	ocr->text = "ゲームを続けよう";
+	ocr->translated = "เล่นเกมต่อ";
+	TranslatorPipeline pipeline;
+	std::string error;
+	ASSERT_TRUE(pipeline.start(MakeConfig(), ocr, backend, MakeCallbacks(collector), &error));
+
+	pipeline.manualTrigger();
+	pipeline.submitImage(MakeImage(64, 32, 200, 3), 0);
+	ASSERT_TRUE(collector->waitForItems(1));
+	ASSERT_EQ(collector->items[0].translated_text, "เล่นเกมต่อ");
+	ASSERT_EQ(backend->calls.load(), 0);
 	pipeline.stop();
 }
 

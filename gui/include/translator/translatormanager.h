@@ -70,7 +70,7 @@ public:
 	QString backendId() const { return backend_id_; }
 	QStringList backendIds() const { return QStringList{"gemini", "google", "google-cloud", "deepl", "opencode-go", "openai", "offline"}; }
 	QString ocrProvider() const { return ocr_provider_; }
-	QStringList ocrProviderIds() const { return QStringList{"paddle", "rapidocr", "google-vision", "ocrspace"}; }
+	QStringList ocrProviderIds() const { return QStringList{"paddle", "rapidocr", "google-vision", "gemini-vision", "ocrspace"}; }
 	QString ocrApiKey() const { return ocr_api_key_; }
 	QString targetLanguage() const { return target_language_; }
 	QVariantMap roiNormalized() const;

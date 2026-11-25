@@ -22,16 +22,23 @@ namespace {
 void AddTextLines(const QString &text, const trans::Image &image, std::vector<trans::OcrLine> &lines)
 {
 	const QStringList parts = text.split('\n');
+	QStringList visible_parts;
 	for (const QString &part : parts)
 	{
-		const QString trimmed = part.trimmed();
-		if (trimmed.isEmpty())
-			continue;
+		if (!part.trimmed().isEmpty())
+			visible_parts.push_back(part.trimmed());
+	}
+	const int count = std::max(1, static_cast<int>(visible_parts.size()));
+	int index = 0;
+	for (const QString &part : visible_parts)
+	{
 		trans::OcrLine line;
-		line.text = trimmed.toStdString();
+		line.text = part.toStdString();
 		line.confidence = 0.9f;
-		line.box = trans::Rect{0, 0, image.width, image.height};
+		line.box = trans::Rect{0, index * image.height / count, image.width,
+			std::max(1, image.height / count)};
 		lines.push_back(std::move(line));
+		++index;
 	}
 }
 
@@ -56,6 +63,7 @@ bool CloudOcrEngine::load(const trans::OcrConfig &config, std::string *error)
 	api_key_ = config.cloud_api_key;
 	endpoint_ = config.cloud_endpoint;
 	language_ = config.cloud_language.empty() ? "jpn" : config.cloud_language;
+	target_language_ = config.cloud_target_language.empty() ? "th" : config.cloud_target_language;
 	timeout_ms_ = config.cloud_timeout_ms > 0 ? config.cloud_timeout_ms : 20000;
 	ready_ = false;
 
@@ -68,6 +76,18 @@ bool CloudOcrEngine::load(const trans::OcrConfig &config, std::string *error)
 		{
 			if (error)
 				*error = "Google Cloud Vision requires an API key";
+			return false;
+		}
+	}
+	else if (provider_ == "gemini-vision")
+	{
+		name_ = "gemini-vision";
+		if (endpoint_.empty())
+			endpoint_ = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+		if (api_key_.empty())
+		{
+			if (error)
+				*error = "Gemini Vision requires an API key";
 			return false;
 		}
 	}
@@ -108,7 +128,35 @@ std::vector<trans::OcrLine> CloudOcrEngine::recognize(const trans::Image &image,
 	QNetworkReply *reply = nullptr;
 	QHttpMultiPart *multipart = nullptr;
 
-	if (provider_ == "google-vision")
+	if (provider_ == "gemini-vision")
+	{
+		const QString prompt = QStringLiteral(
+			"Detect every text region in this game screenshot. Return ONLY a JSON array. "
+			"Each element must have: \"text\" (the original Japanese text), "
+			"\"translatedText\" (the translation to %1), and "
+			"\"box_2d\": [ymin, xmin, ymax, xmax] normalized to 0-1000. "
+			"Do not use markdown fences.").arg(QString::fromStdString(target_language_));
+		QUrl url(QString::fromStdString(endpoint_));
+		QUrlQuery query;
+		query.addQueryItem(QStringLiteral("key"), QString::fromStdString(api_key_));
+		url.setQuery(query);
+		const QJsonObject part_text{{QStringLiteral("text"), prompt}};
+		const QJsonObject part_image{
+			{QStringLiteral("inline_data"), QJsonObject{
+				{QStringLiteral("mime_type"), QStringLiteral("image/png")},
+				{QStringLiteral("data"), QString::fromLatin1(png.toBase64())}}}};
+		const QJsonObject body{
+			{QStringLiteral("contents"), QJsonArray{QJsonObject{
+				{QStringLiteral("parts"), QJsonArray{part_text, part_image}}}}},
+			{QStringLiteral("generationConfig"), QJsonObject{
+				{QStringLiteral("temperature"), 0.1},
+				{QStringLiteral("maxOutputTokens"), 2048}}},
+		};
+		QNetworkRequest request(url);
+		request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+		reply = network.post(request, QJsonDocument(body).toJson(QJsonDocument::Compact));
+	}
+	else if (provider_ == "google-vision")
 	{
 		QUrl url(QString::fromStdString(endpoint_));
 		QUrlQuery query;
@@ -185,6 +233,65 @@ std::vector<trans::OcrLine> CloudOcrEngine::recognize(const trans::Image &image,
 	const QJsonDocument document = QJsonDocument::fromJson(body);
 	const QJsonObject root = document.object();
 	QString text;
+	if (provider_ == "gemini-vision")
+	{
+		const QJsonArray candidates = root.value(QStringLiteral("candidates")).toArray();
+		if (!candidates.isEmpty())
+		{
+			const QJsonArray parts = candidates.first().toObject()
+				.value(QStringLiteral("content")).toObject()
+				.value(QStringLiteral("parts")).toArray();
+			if (!parts.isEmpty())
+				text = parts.first().toObject().value(QStringLiteral("text")).toString();
+		}
+		const int start = text.indexOf('[');
+		const int end = text.lastIndexOf(']');
+		if (start < 0 || end <= start)
+		{
+			if (error)
+				*error = "Gemini Vision returned no JSON regions";
+			return lines;
+		}
+		QJsonParseError parse_error;
+		const QJsonDocument regions_document = QJsonDocument::fromJson(
+			text.mid(start, end - start + 1).toUtf8(), &parse_error);
+		if (parse_error.error != QJsonParseError::NoError || !regions_document.isArray())
+		{
+			if (error)
+				*error = "Gemini Vision returned malformed JSON";
+			return lines;
+		}
+		for (const QJsonValue &value : regions_document.array())
+		{
+			const QJsonObject region = value.toObject();
+			const QString source = region.value(QStringLiteral("text")).toString().trimmed();
+			const QString translated = region.value(QStringLiteral("translatedText")).toString().trimmed();
+			if (source.isEmpty() || translated.isEmpty())
+				continue;
+			trans::OcrLine line;
+			line.text = source.toStdString();
+			line.translated_text = translated.toStdString();
+			line.confidence = 0.9f;
+			line.box = trans::Rect{0, 0, image.width, image.height};
+			const QJsonArray box = region.value(QStringLiteral("box_2d")).toArray();
+			if (box.size() == 4)
+			{
+				const qreal ymin = box.at(0).toDouble() / 1000.0;
+				const qreal xmin = box.at(1).toDouble() / 1000.0;
+				const qreal ymax = box.at(2).toDouble() / 1000.0;
+				const qreal xmax = box.at(3).toDouble() / 1000.0;
+				line.box = trans::Rect{
+					static_cast<int>(xmin * image.width),
+					static_cast<int>(ymin * image.height),
+					std::max(1, static_cast<int>((xmax - xmin) * image.width)),
+					std::max(1, static_cast<int>((ymax - ymin) * image.height))};
+			}
+			lines.push_back(std::move(line));
+		}
+		if (lines.empty() && error)
+			*error = "Gemini Vision returned no translated regions";
+		return lines;
+	}
 	if (provider_ == "google-vision")
 	{
 		const QJsonArray responses = root.value(QStringLiteral("responses")).toArray();

@@ -21,6 +21,7 @@ private:
 	std::string api_key_;
 	std::string endpoint_;
 	std::string language_ = "jpn";
+	std::string target_language_ = "th";
 	int timeout_ms_ = 20000;
 	bool ready_ = false;
 };

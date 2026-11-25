@@ -4,6 +4,9 @@
 
 #include <QCoreApplication>
 #include <QHostAddress>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTcpServer>
 #include <QTcpSocket>
 
@@ -95,6 +98,38 @@ int main(int argc, char **argv)
 		if (lines.size() != 2 || lines[0].text != "ゲームを続けよう" || lines[1].text != "二行目")
 			return Fail("google vision text was not parsed");
 		std::printf("PASS google vision cloud OCR\n");
+	}
+
+	{
+		MockServer mock;
+		if (!mock.start())
+			return Fail("mock server did not listen");
+		const QString regions = QStringLiteral(
+			R"([{"text":"ゲームを続けよう","translatedText":"เล่นเกมต่อ","box_2d":[100,200,150,700]}])");
+		const QJsonObject root{
+			{QStringLiteral("candidates"), QJsonArray{QJsonObject{
+				{QStringLiteral("content"), QJsonObject{
+					{QStringLiteral("parts"), QJsonArray{QJsonObject{
+						{QStringLiteral("text"), regions}}}}}}}}},
+		};
+		mock.response_body = QJsonDocument(root).toJson(QJsonDocument::Compact);
+		CloudOcrEngine engine;
+		std::string error;
+		trans::OcrConfig config;
+		config.cloud_provider = "gemini-vision";
+		config.cloud_api_key = "test-key";
+		config.cloud_target_language = "th";
+		config.cloud_endpoint = mock.url(QStringLiteral("/gemini")).toStdString();
+		if (!engine.load(config, &error))
+			return Fail("gemini vision load failed");
+		const auto lines = engine.recognize(TestImage(), &error);
+		if (lines.size() != 1 || lines[0].text != "ゲームを続けよう" ||
+				lines[0].translated_text != "เล่นเกมต่อ")
+		{
+			std::fprintf(stderr, "body=%s lines=%zu error=%s\n", mock.response_body.constData(), lines.size(), error.c_str());
+			return Fail("gemini vision regions were not parsed");
+		}
+		std::printf("PASS gemini vision OCR + translation\n");
 	}
 
 	{

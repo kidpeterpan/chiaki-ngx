@@ -335,6 +335,14 @@ bool TranslatorManager::ensureBackend()
 	cloud_backend_.reset();
 	backend_.reset();
 
+	if (ocr_provider_ == QStringLiteral("gemini-vision"))
+	{
+		// The OCR call already returns the translation; no second backend is needed.
+		backend_ = std::make_shared<trans::NullTranslatorBackend>();
+		setStatus(QStringLiteral("Ready (Gemini Vision OCR + translation)"));
+		return true;
+	}
+
 	if (backend_id_ == QStringLiteral("offline"))
 	{
 		const QString model_dir = nllb_model_path_.trimmed();
@@ -428,10 +436,11 @@ bool TranslatorManager::ensurePipeline(const trans::Rect &roi, QString *error)
 	}
 
 	const bool cloud_ocr = ocr_provider_ == QStringLiteral("google-vision") ||
+		ocr_provider_ == QStringLiteral("gemini-vision") ||
 		ocr_provider_ == QStringLiteral("ocrspace");
 	if (cloud_ocr)
 		ocr_ = std::make_shared<CloudOcrEngine>();
-	else if (!ocr_ || std::string(ocr_->name()) != "paddle-onnx")
+	else
 		ocr_ = trans::createOnnxOcrEngine();
 	if (!ocr_)
 	{
@@ -480,6 +489,7 @@ bool TranslatorManager::ensurePipeline(const trans::Rect &roi, QString *error)
 		config.ocr.cloud_provider = ocr_provider_.toStdString();
 		config.ocr.cloud_api_key = ocr_api_key_.toStdString();
 		config.ocr.cloud_language = "jpn";
+		config.ocr.cloud_target_language = target_language_.toStdString();
 	}
 	else
 	{

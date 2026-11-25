@@ -111,6 +111,9 @@ struct OcrLine
 	float confidence = 0.0f;
 	Rect box;          // axis-aligned box in the ROI image
 	int angle = 0;      // 0 for horizontal, 90 for vertical text
+	// Set when the OCR provider itself translated the region (Gemini Vision).
+	// The pipeline delivers this instead of calling the translation backend.
+	std::string translated_text;
 };
 
 struct TranslationItem

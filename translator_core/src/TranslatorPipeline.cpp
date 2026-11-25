@@ -301,6 +301,24 @@ void TranslatorPipeline::handleFrame(const std::shared_ptr<PipelineShared> &shar
 	shared->dedup.remember(text, frame.now_ms);
 
 	const std::string &target_language = shared->config.prompt.target_language;
+
+	// Gemini Vision (and any future OCR+translation provider) returns the
+	// translation alongside each region; do not translate it a second time.
+	std::string pretranslated;
+	for (const OcrLine &line : lines)
+	{
+		if (line.translated_text.empty())
+			continue;
+		if (!pretranslated.empty())
+			pretranslated += "\n";
+		pretranslated += line.translated_text;
+	}
+	if (!pretranslated.empty() && isTranslatableText(pretranslated))
+	{
+		shared->cache.put(text, target_language, pretranslated);
+		deliver(shared, text, confidence, frame.now_ms, false, pretranslated);
+		return;
+	}
 	if (const std::optional<std::string> cached = shared->cache.get(text, target_language))
 	{
 		shared->cache_hits.fetch_add(1);

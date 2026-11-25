@@ -399,7 +399,7 @@ Item {
                 ComboBox {
                     id: ocrBox
                     Layout.fillWidth: true
-                    model: ["PaddleOCR (PP-OCRv3 Japanese)", "RapidOCR (PP-OCRv5)", "Google Cloud Vision", "OCR.space"]
+                    model: ["PaddleOCR (PP-OCRv3 Japanese)", "RapidOCR (PP-OCRv5)", "Google Cloud Vision", "Gemini Vision (OCR + translate)", "OCR.space"]
                     currentIndex: Math.max(0, Translator.ocrProviderIds.indexOf(Translator.ocrProvider))
                     onActivated: Translator.ocrProvider = Translator.ocrProviderIds[index]
                 }
@@ -408,12 +408,12 @@ Item {
             RowLayout {
                 width: parent.width
                 spacing: 8
-                visible: Translator.ocrProvider === "google-vision" || Translator.ocrProvider === "ocrspace"
+                visible: Translator.ocrProvider === "google-vision" || Translator.ocrProvider === "gemini-vision" || Translator.ocrProvider === "ocrspace"
                 Text { text: "OCR key"; color: "#dddddd"; font.pixelSize: 14 }
                 TextField {
                     id: ocrKeyField
                     Layout.fillWidth: true
-                    placeholderText: Translator.ocrProvider === "ocrspace" ? "helloworld (free)" : "Google Cloud API key"
+                    placeholderText: Translator.ocrProvider === "ocrspace" ? "helloworld (free)" : "Google / Gemini API key"
                     echoMode: TextInput.Password
                     text: Translator.ocrApiKey
                 }

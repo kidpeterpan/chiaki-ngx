@@ -30,6 +30,7 @@ struct OcrConfig
 	std::string cloud_api_key;
 	std::string cloud_endpoint;
 	std::string cloud_language = "jpn";
+	std::string cloud_target_language = "th";
 	int cloud_timeout_ms = 20000;
 };
 
