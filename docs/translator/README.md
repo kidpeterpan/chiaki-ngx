@@ -1,158 +1,71 @@
-# chiaki-ngx Translator
+# Verification status (อัปเดต 2026-11-24)
 
-ส่วนเสริมของ chiaki-ngx สำหรับแปลซับไตเติลเกม PlayStation 5 แบบเรียลไทม์บน Steam Deck
-ทำงานในเครื่อง (on-device OCR) แล้วเลือกแปลผ่าน Gemini, DeepL หรือ endpoint แบบ OpenAI-compatible (เช่น OpenCode Go) หรือเอาต์พุตข้อความไปใช้ต่อ
+## ผ่านแล้ว
 
-> สถานะ: โมดูล `translator_core` และตัวเชื่อม Qt/QML ถูกเขียนและทดสอบแกนหลักครบแล้ว
-> (repository health `scripts/verify.sh --full` PASS ทุก stage)
-> (63 unit tests + 2 integration tests ผ่าน, OCR จริงด้วย ONNX Runtime + PP-OCR,
-> และคอมไพล์ GUI ทั้งโปรเจกต์ผ่านบน macOS) ส่วนการรันบน Steam Deck จริงและการแพ็ก
-> AppImage/Flatpak ต้องทำในรอบถัดไปตาม roadmap
+| การทดสอบ | คำสั่ง | ผล |
+| --- | --- | --- |
+| Core unit tests | `ctest --test-dir build-core` | 63/63 ผ่าน (~1.0 s) |
+| ONNX integration | `./build-core/translator_onnx_tests` | 2/2 ผ่าน (OCR จริง + pipeline จริง) |
+| Sanitizers | ASan/UBSan และ TSan กับ core tests | 63/63 ผ่าน ไม่พบ leak/UAF/race ใน pipeline |
+| QML smoke load | `qml` + stub singleton | overlay instantiate โดยไม่มี QML error |
+| OCR ภาพซับ | `translator_ocr_probe ... subtitle.ppm` | `ゲームを続けよう` conf 0.980, ocr_ms 26–29 ms (M1 host) |
+| NLLB offline (CT2) | `translator_nllb_probe` | ja→th ถูกต้อง 267–429 ms, peak RSS 1.23 GB (host) |
+| Cloud backends (mock) | `translator_cloud_tests` | 5/5 ผ่าน: Gemini, worker-thread dispatch, DeepL, HTTP 400, timeout |
+| JMdict เต็ม | `build_jmdict.py` + `dict_probe` | 219,217 entries, 500,240 words, 83 MB; ค้น 食べる/食べた ผ่าน |
+| GUI compile (macOS) | `scripts/translator/build-macos.sh` | สำเร็จ + bundle models/dict เข้า `.app` + ad-hoc sign; เปิดแอปและโหลด Main.qml ได้ |
+| Linux x86_64 (Arch) | Docker + clang + Qt6/FFmpeg/libplacebo + ONNX | `translator_tests` 63/63, `translator_onnx_tests` 2/2; full GUI build สำเร็จ |
+| macOS app bundle | `build-macos.sh` + launch | `chiaki.app` มี assets ใน Resources/translator; QML Main โหลดไม่มี translator error |
+| Gemini Vision | mock test | ส่งภาพ + ขอ JSON regions พร้อม `translatedText`; pipeline ใช้คำแปลโดยไม่เรียก backend ซ้ำ |
+| Live endpoints | curl (2026-11-25) | Google Translate free ja→th คืนคำแปลจริง; OCR.space `helloworld` อ่าน fixture ได้ `ゲームを続けよう` |
+| CI release blocker | GitHub Actions 2026-11-25 | v0.2.4 เริ่ม job ไม่ได้: "recent account payments have failed or your spending limit needs to be increased" |
+| Chrome Screen AI | C++ probe | โหลด `libchromescreenai.so` + TFLite, อ่าน `ゲームを続けよう` ได้; Linux x86_64 |
+| Cloud OCR | mock tests | Google Cloud Vision + OCR.space parse ผ่าน; ยังไม่ทดสอบ key จริง |
+| Google translation | mock tests | Google Translate (free) + Google Cloud Translation ผ่าน mock HTTP; ยังไม่ทดสอบ key จริง |
+| RapidOCR PP-OCRv5 | probe | อ่าน `ゲームを続けよう` ได้ conf 1.000, ~29 ms บน M1; เลือกได้ใน QML |
+| Hotkeys | Qt shortcut tests | parse/validate/conflict ผ่าน; F13/F14/F15/F12 defaults, combination และ empty-disable |
+| Chiaki menu | QML | ปุ่ม 訳 ใน inline + separate stream menu เปิด translator settings |
+| Touch routing | v0.2.1 | แตะ 訳 เพื่อเปิดเมนู, grabInput ระหว่างเมนู, แตะคำแปลเพื่อ JMdict; แก้ใน `qmlmainwindow.cpp`/`TranslatorOverlay.qml` |
+| Steam Deck AppImage | CI `Release chiaki-ngx translator` v0.2.2 | สำเร็จ; มี RapidOCR PP-OCRv5 + models/dict/ONNX; glibc 2.31 |
+| macOS DMG | CI `Build chiaki-ngx macOSX` + full dict | สำเร็จ; mount DMG แล้ว `--help` ทำงาน, ONNX ถูก bundle ใน `Frameworks` |
+| Repo health | `scripts/verify.sh --full` | PASS ทุก stage: env/lint/build-core/test-core/build-release/test-unit/smoke/security (77s) |
+| CI translator tests | GitHub Actions `Translator tests` | success บน main/feature (58a4e0f) |
+| MOC | moc + clang syntax check | ผ่านทั้ง `TranslatorManager` และ `CloudTranslatorBackend` |
+| QML lint | `qmllint TranslatorOverlay.qml` | ไม่มี syntax error (มี warning เรื่อง import/singleton ที่ resolve ตอน runtime) |
+| App launch | `chiaki --help` (offscreen) | เริ่มทำงานถึง renderer init; ไม่ crash จาก translator |
 
-## ทำอะไรได้แล้ว
+## ยังไม่ได้ทดสอบ (ต้องมี hardware/credential)
 
-- ดึงเฉพาะ ROI จากเฟรมวิดีโอที่ถอดรหัสแล้ว (NV12 / I420 / P010 / RGBA / BGRA / GRAY8)
-- จำกัดการดึงภาพ 10 Hz และตรวจความนิ่งของข้อความ 250 ms ก่อนสั่ง OCR
-- OCR ภาษาญี่ปุ่นด้วย PaddleOCR PP-OCRv3 (ONNX Runtime C++) รองรับข้อความแนวตั้งแบบคอลัมน์
-- กรองข้อความซ้ำด้วย Levenshtein similarity ≥ 90%
-- แปลแบบมีบริบท 3 ประโยคล่าสุด ผ่าน Gemini Flash, DeepL หรือ OpenAI-compatible chat completions เช่น OpenCode Go (Qt Network, async)
-- แคชคำแปล LRU, backlog บทสนทนา, และแตะคำเพื่อเปิด JMdict (SQLite)
-- Overlay ภายใน viewport เดียวกับวิดีโอ (ไม่เปิดหน้าต่างแยก จึงไม่หลุด focus ใน Gamescope)
-- ปุ่มหลังเครื่อง L4/R4/L5/R5 ผ่าน SDL paddle events + คีย์ลัด F13/F14/F15
+- รันบน Steam Deck จริง: VA-API 1080p60, Gamescope, touch ROI, paddle L4/R4/L5
+- Gemini/DeepL live API (ต้องมี key) — ทดสอบกับ mock HTTP แล้ว แต่ยังไม่ยิง API จริง
+- AppImage/Flatpak build จริง (AppImage ที่ประกอบใน Arch container ตรวจเนื้อหาได้ แต่ยังไม่ยืนยันรันบน SteamOS; ต้อง build บน glibc เก่ากว่า เช่น upstream Ubuntu builder)
+- NLLB บน Steam Deck/การวัด RAM จริง
 
-## โครงสร้าง
-
-```text
-translator_core/            C++17 static library (ไม่พึ่ง Qt)
-├── include/trans/          API สาธารณะ
-├── src/                    FrameProcessor, OCR, pipeline, dict, backends
-│   └── NllbBackend.cpp     optional CTranslate2 offline backend
-├── tests/                  63 unit tests + 2 ONNX integration tests (CTest)
-└── tools/                  build_jmdict.py, ocr_probe, dict_probe, nllb_probe
-
-gui/
-├── include/translator/     TranslatorManager (QML singleton), cloud backends
-├── src/translator/         Qt adapter + Gemini/DeepL/OpenAI-compatible
-└── src/qml/translator/     TranslatorOverlay.qml (subtitle, ROI, backlog, settings)
-
-assets/
-├── models/                 PP-OCRv3 det + Japan rec + dictionary (Apache-2.0)
-└── dict/                   JMdict schema, sample DB, build instructions
-
-packaging/                  AppImageBuilder.yml, Flatpak manifest, AppRun
-scripts/translator/         fetch-assets, deploy, build-appimage, Dockerfile
-docs/translator/            สถาปัตยกรรม, roadmap, performance, risks
-```
-
-## Build & test (core)
-
-ต้องใช้ CMake ≥ 3.16, C++17, SQLite3 และ (ถ้าต้องการ OCR) ONNX Runtime
+## วิธีรันซ้ำในเครื่องนี้
 
 ```bash
-# macOS (Homebrew)
-brew install cmake ninja sqlite onnxruntime
+# core + tests
 cmake -S translator_core -B build-core -G Ninja \
-  -DTRANS_BUILD_TESTS=ON \
-  -DTRANS_ENABLE_ONNXRUNTIME=ON
+  -DTRANS_BUILD_TESTS=ON -DTRANS_ENABLE_ONNXRUNTIME=ON
 cmake --build build-core
 ctest --test-dir build-core --output-on-failure
 
-# Arch / SteamOS
-sudo pacman -S --needed cmake ninja sqlite onnxruntime   # onnxruntime อาจต้องใช้ AUR
-cmake -S translator_core -B build-core -G Ninja -DTRANS_BUILD_TESTS=ON
-cmake --build build-core && ctest --test-dir build-core
+# integration (ต้องมี assets/models)
+./build-core/translator_onnx_tests
+
+# GUI (macOS ตัวอย่าง; Linux/SteamOS ใช้ pacman deps)
+cmake -S . -B build-gui -G Ninja \
+  -DCMAKE_PREFIX_PATH="$(brew --prefix qt)" \
+  -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
+  -DCHIAKI_ENABLE_TRANSLATOR=ON -DTRANS_ENABLE_ONNXRUNTIME=ON \
+  -DCHIAKI_ENABLE_STEAMDECK_NATIVE=OFF -DCHIAKI_ENABLE_SETSU=OFF
+cmake --build build-gui --target chiaki -j
 ```
 
-ทดสอบ OCR กับภาพจริง:
+## ข้อควรระวังจากการทดสอบ
 
-```bash
-# สร้างภาพทดสอบหรือใช้ภาพจากเกม แล้วรัน
-./build-core/translator_ocr_probe \
-  assets/models/ch_PP-OCRv3_det.onnx \
-  assets/models/japan_PP-OCRv3_rec.onnx \
-  assets/models/japan_dict.txt \
-  /path/to/subtitle.ppm
-```
-
-ทดสอบพจนานุกรม:
-
-```bash
-python3 translator_core/tools/build_jmdict.py \
-  --input JMdict_e.gz --output assets/dict/jmdict.db
-./build-core/translator_dict_probe assets/dict/jmdict.db at "昨日は食べた" 9
-```
-
-## Build ทั้งโปรเจกต์
-
-Steam Deck: ดาวน์โหลด [AppImage](STEAMDECK.md) — macOS: ดาวน์โหลด DMG ได้จาก [release](https://github.com/kidpeterpan/chiaki-ngx/releases/tag/v0.2.2-translator) หรือ build เองด้วย [`build-macos.sh`](../../scripts/translator/build-macos.sh) — ดู [MACOS.md](MACOS.md)
-
-```bash
-cmake -S . -B build -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCHIAKI_ENABLE_TRANSLATOR=ON \
-  -DTRANS_ENABLE_ONNXRUNTIME=ON \
-  -DONNXRUNTIME_ROOT=/usr
-# optional offline translation:
-#  -DTRANS_ENABLE_CTRANSLATE2=ON -DCTRANSLATE2_ROOT=/usr -DSENTENCEPIECE_ROOT=/usr
-cmake --build build -j
-```
-
-รันจาก source tree:
-
-```bash
-CHIAKI_TRANSLATOR_ASSETS=$PWD/assets ./build/gui/chiaki
-```
-
-> `assets/dict/jmdict.db` (83 MB) ไม่ได้ commit ไว้ ใช้ `scripts/translator/fetch-assets.sh`
-> เพื่อดาวน์โหลดโมเดลและสร้างฐานข้อมูลก่อนแพ็ก
-
-## วิธีใช้บน Steam Deck
-
-1. เปิดเกมผ่าน Remote Play ตามปกติ
-2. กดไอคอน **訳** มุมขวาบน เปิด translator แล้วใส่ API key (Gemini, DeepL, OpenCode Go หรือ OpenAI-compatible)
-3. เลือก **Select ROI** แล้วลากกรอบบริเวณกล่องข้อความ (แตะ/ลากด้วยจอสัมผัสได้)
-   - บันทึกเป็น preset แยกตามเกมได้
-4. ระหว่างเล่น
-   - **L4** แปลทันที (manual trigger)
-   - **R4** ซ่อน/แสดงคำแปล
-   - **L5** เปิด backlog
-   - **R5** ปรับ ROI
-   - สำรอง: **F13/F14/F15** สำหรับผู้ที่ผูกปุ่มผ่าน Steam Input เป็นคีย์บอร์ด
-
-หาก Steam Input ไม่ส่ง paddle event มาเป็น `SDL_CONTROLLER_BUTTON_PADDLE1..4`
-ให้ผูก L4/R4/L5 กับ F13/F14/F15 ใน Steam Input แทน (overlay รองรับทั้งสองทาง)
-
-## การปล่อย release
-
-ทุก release มีไฟล์ดาวน์โหลดสองตัวในที่เดียว: **macOS arm64 DMG** และ **Steam Deck AppImage**
-(พร้อมไฟล์ `.sha256`) workflow `release-translator.yml` สร้างให้เมื่อ push tag รูปแบบ `vX.Y.Z-translator`
-(ข้อความของ annotated tag จะกลายเป็น release notes)
-
-```bash
-git tag -a v0.2.0-translator -m "สรุปสิ่งที่เปลี่ยน"
-git push origin v0.2.0-translator
-```
-
-ทดสอบโดยไม่ปล่อยจริง: Actions → *Release chiaki-ngx translator* → Run workflow กรอก tag
-และปิด `publish` จะ build และเก็บ artifact ไว้ 7 วันเท่านั้น
-
-## ข้อจำกัดที่ทราบ
-
-- ข้อความแนวตั้ง: ตัวตรวจจับของ PP-OCRv3 ออกแบบมาสำหรับบรรทัดแนวนอน
-  ระบบจึงรวมกล่องตัวอักษรที่ตรวจพบเป็นคอลัมน์ภายหลัง (`mergeVerticalLines`)
-  ภาพแนวตั้งที่ฟอนต์ห่างมากอาจตรวจจับไม่ครบ; สามารถเลือก Manga-OCR ในอนาคต
-- HDR/zero-copy: ถ้า decoder ส่ง VAAPI/Vulkan frame โดยไม่ transfer ลง software
-  ระบบจะ transfer เฉพาะตอนจะ OCR (10 Hz) ซึ่งอาจล้มเหลวบนไดรเวอร์บางตัว;
-  ตั้งค่าใช้ software decoding ชั่วคราวได้ถ้าพบปัญหา
-- DeepL API บางแผนไม่รองรับภาษาไทย ให้ใช้ Gemini หรือ NLLB แทน
-- Offline NLLB เป็น optional build (`-DTRANS_ENABLE_CTRANSLATE2=ON`) และไม่บันเดิลโมเดลเพราะลิขสิทธิ์ CC BY-NC 4.0; RAM ~1.2 GB (สูงกว่างบ)
-- OpenAI-compatible (รวม OpenCode Go) รองรับเฉพาะ chat-completions ไม่รองรับสไตล์ `responses`/`messages`;
-  ต้องระบุ Base URL และชื่อโมเดล (OpenCode Go มีค่าเริ่มต้นให้) และใช้ `http://` ได้เฉพาะ localhost (เช่น Ollama ไม่ต้องมี key);
-  ควรเลือกโมเดลแบบ flash เพราะโมเดล reasoning อาจตอบกลับมาโดยไม่มีเนื้อหา ซึ่งจะแสดงเป็น error
-- API key เก็บใน QSettings แบบ plain text; ควรใช้บัญชี API แยกและจำกัด quota
-
-## Licenses
-
-- โค้ดส่วนนี้: AGPL-3.0-only-OpenSSL ตาม chiaki-ngx (ไฟล์ใหม่ใช้ SPDX เดียวกัน)
-- PaddleOCR models/dictionary: Apache-2.0
-- JMdict: CC BY-SA 4.0 (EDRDG) — ฐานข้อมูลที่แปลงแล้วเป็น derivative work ภายใต้สัญญาเดียวกัน
+- บน macOS รุ่นนี้ CMake เลือก OpenSSL 4 ให้ bundled curl (compile ไม่ผ่าน)
+  ต้องบังคับ OpenSSL 3 และเพิ่ม `libcrypto` 4 ตอน link เฉพาะเครื่องนี้
+  (เป็นปัญหา upstream/สภาพแวดล้อม ไม่ใช่โค้ด translator; SteamOS ใช้ OpenSSL 3 ปกติ)
+- `translator_onnx_tests` ใช้ fixture `translator_core/tests/fixtures/subtitle.ppm`
+  และโมเดลใน `assets/models`
+- แอป offscreen บน macOS สร้าง OpenGL context ไม่ได้; การทดสอบ GUI ต้องมีจอจริง

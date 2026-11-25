@@ -22,6 +22,7 @@
 | Cloud OCR | mock tests | Google Cloud Vision + OCR.space parse ผ่าน; ยังไม่ทดสอบ key จริง |
 | Google translation | mock tests | Google Translate (free) + Google Cloud Translation ผ่าน mock HTTP; ยังไม่ทดสอบ key จริง |
 | RapidOCR PP-OCRv5 | probe | อ่าน `ゲームを続けよう` ได้ conf 1.000, ~29 ms บน M1; เลือกได้ใน QML |
+| Release 0.2.5 | local macOS DMG | สร้าง DMG + ad-hoc sign + mount/`--help` ผ่าน; AppImage รอ billing |
 | Real-time toggle | Live button + F11 | menu/overlay เปิด-ปิด pipeline ทันที; QML smoke ผ่าน |
 | Hotkeys | Qt shortcut tests | parse/validate/conflict ผ่าน; F13/F14/F15/F12 defaults, combination และ empty-disable |
 | Chiaki menu | QML | ปุ่ม 訳 ใน inline + separate stream menu เปิด translator settings |

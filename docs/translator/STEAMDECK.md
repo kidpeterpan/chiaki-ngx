@@ -10,7 +10,7 @@ SHA-256:
 e340488845bfcb728620c7743dffe4e7c94f06097025b4f8ece9c10277185c5f
 ```
 
-ใช้ **v0.2.2** ขึ้นไป ซึ่งมีทั้ง touch fix และ Decky-Translator providers ครบ (v0.1.0 มีบั๊ก touch)
+ใช้ **v0.2.2** ขึ้นไป (AppImage v0.2.5 ยังรอ GitHub Actions billing) ซึ่งมีทั้ง touch fix และ Decky-Translator providers ครบ (v0.1.0 มีบั๊ก touch)
 
 ไฟล์ `.sha256` อยู่ใน release เดียวกัน
 
