@@ -27,12 +27,17 @@ scripts/build-ffmpeg.sh appimage
 scripts/build-sdl2-compat.sh appimage
 scripts/build-libplacebo.sh appimage
 scripts/build-hidapi.sh appimage
+# curl 8.18+ needs OpenSSL 3; the Ubuntu 20.04 builder has 1.1.1. Static, private prefix.
+scripts/build-openssl.sh appimage
+OPENSSL_PREFIX="$(pwd)/appimage/openssl-prefix"
 
 rm -rf build_appimage && mkdir -p build_appimage
-cd build_appimage 
+cd build_appimage
 qt-cmake \
 	-GNinja \
 	-DCMAKE_BUILD_TYPE=Release \
+	-DOPENSSL_ROOT_DIR="${OPENSSL_PREFIX}" \
+	-DOPENSSL_USE_STATIC_LIBS=TRUE \
 	-DCHIAKI_ENABLE_TESTS=ON \
 	-DCHIAKI_ENABLE_GUI=ON \
 	-DCHIAKI_GUI_ENABLE_SDL_GAMECONTROLLER=ON \
