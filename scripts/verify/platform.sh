@@ -28,7 +28,7 @@ platform_base_tools() {
 stage_tools() {
 	case "$1" in
 		lint)       echo "shellcheck actionlint qmllint" ;;
-		build-core|test-core|build-release|test-unit) echo "cmake ninja" ;;
+		build-core|test-core|build-release|test-unit|test-gui) echo "cmake ninja" ;;
 		security)   echo "gitleaks osv-scanner rsync" ;;
 		env|smoke)  echo "" ;;
 	esac
@@ -38,7 +38,7 @@ stage_tools() {
 platform_tools() {
 	local s out
 	out="$(platform_base_tools)"
-	for s in env lint build-core test-core build-release test-unit smoke security; do
+	for s in $ALL_STAGES; do
 		out="$out $(stage_tools "$s")"
 	done
 	printf '%s\n' $out | sort -u | tr '\n' ' '
@@ -66,15 +66,15 @@ platform_app_libs() {
 stage_libs() {
 	case "$1" in
 		build-core|test-core) platform_core_libs ;;
-		build-release|test-unit) platform_app_libs ;;
+		build-release|test-unit|test-gui) platform_app_libs ;;
 		*) echo "" ;;
 	esac
 }
 
-# True when any planned stage links the app, so SDL and the app stack are required.
+# True when any planned stage configures the app, so SDL and the app stack are required.
 plan_needs_app() {
 	case " ${VERIFY_PLAN:-} " in
-		*" build-release "*|*" test-unit "*) return 0 ;;
+		*" build-release "*|*" test-unit "*|*" test-gui "*) return 0 ;;
 		*) return 1 ;;
 	esac
 }

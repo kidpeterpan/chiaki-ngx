@@ -111,13 +111,13 @@ check_libs() {
 # commit than recorded, 'U' merge conflict. Any of these fails.
 check_submodules() {
 	local bad
-	bad="$(git submodule status | grep -E '^[-+U]' || true)"
+	bad="$(git submodule status --recursive | grep -E '^[-+U]' || true)"
 	if [ -n "$bad" ]; then
 		echo "submodules not at their recorded commits (run: git submodule update --init --recursive):"
 		echo "$bad"
 		return 1
 	fi
-	echo "  $(git submodule status | wc -l | tr -d ' ') submodules at recorded commits"
+	echo "  $(git submodule status --recursive | wc -l | tr -d ' ') submodules at recorded commits"
 }
 
 check_assets() {

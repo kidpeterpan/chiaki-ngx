@@ -38,6 +38,8 @@ build_release_linux() {
 		echo "ONNXRUNTIME_ROOT not set or incomplete; building without the OCR backend"
 		args+=(-DTRANS_ENABLE_ONNXRUNTIME=OFF)
 	fi
-	cmake -S . -B build-release -G Ninja "${args[@]}"
-	cmake --build build-release --target chiaki -j"$(platform_cpus)"
+	# This runs inside step, where bash ignores errexit, so each command returns on
+	# failure itself: a failed configure must not fall through to a stale build tree.
+	cmake -S . -B build-release -G Ninja "${args[@]}" || return
+	cmake --build build-release --target chiaki -j"$(platform_cpus)" || return
 }

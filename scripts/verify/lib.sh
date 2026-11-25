@@ -15,16 +15,21 @@ say() { printf '%s\n' "$*" >&"$REPORT_FD"; }
 
 die() { echo "verify: $*" >&2; exit 2; }
 
+# Where runs are logged and where stage definitions live. Overridable so
+# scripts/verify/selftest.sh can drive the harness with stand-in stages and its own logs.
+LOG_ROOT="${VERIFY_LOG_ROOT:-$ROOT/.verify-logs}"
+STAGE_DIR="${VERIFY_STAGE_DIR:-$ROOT/scripts/verify/stages}"
+
 # ---- stage plan -----------------------------------------------------------------
 
-ALL_STAGES="env lint build-core test-core build-release test-unit smoke security"
+ALL_STAGES="env lint build-core test-core build-release test-unit test-gui smoke security"
 
 # env gates every stage: it is what validates the prerequisites a stage needs, so running
 # any stage without it turns a missing tool into a bare "command not found".
 deps_of() {
 	case "$1" in
 		env) echo "" ;;
-		lint|build-core|build-release|test-unit|security) echo "env" ;;
+		lint|build-core|build-release|test-unit|test-gui|security) echo "env" ;;
 		test-core) echo "build-core" ;;
 		smoke) echo "build-core build-release" ;;
 		*) echo "unknown stage: $1" >&2; return 1 ;;
@@ -52,48 +57,62 @@ ordered_plan() {
 # ---- per-stage timeouts ---------------------------------------------------------
 # A hung compiler or scanner must not block a run forever. Generous enough that a slow
 # but working machine never trips them; override with VERIFY_TIMEOUT_<STAGE> in seconds.
+timeout_override_var() { printf 'VERIFY_TIMEOUT_%s' "$(printf '%s' "$1" | tr 'a-z-' 'A-Z_')"; }
+
 stage_timeout() {
-	local override
-	override="$(eval "echo \${VERIFY_TIMEOUT_$(echo "$1" | tr 'a-z-' 'A-Z_'):-}")"
-	if [ -n "$override" ]; then echo "$override"; return; fi
+	local var
+	var="$(timeout_override_var "$1")"
+	if [ -n "${!var:-}" ]; then echo "${!var}"; return; fi
 	case "$1" in
 		env|lint|smoke) echo 600 ;;
 		build-core|test-core) echo 1200 ;;
-		test-unit|security) echo 1800 ;;
+		test-unit|test-gui|security) echo 1800 ;;
 		build-release) echo 3600 ;;
 		*) echo 1800 ;;
 	esac
 }
 
+# A malformed override would otherwise fire the watchdog at once and report a false
+# timeout, so every set override must be a whole number of seconds.
+validate_timeouts() {
+	local stage var bad=0
+	for stage in $ALL_STAGES; do
+		var="$(timeout_override_var "$stage")"
+		if [ -n "${!var:-}" ] && ! [[ "${!var}" =~ ^[1-9][0-9]*$ ]]; then
+			echo "$var must be a positive whole number of seconds, got: ${!var}" >&2
+			bad=1
+		fi
+	done
+	return "$bad"
+}
+
 # ---- run lock --------------------------------------------------------------------
 # Concurrent runs would share build-core/, build-unit/ and build-release/ and corrupt
-# each other. mkdir is atomic, so it is the lock; a lock whose owner is gone is stale.
-LOCK_DIR="$ROOT/.verify-logs/lock"
+# each other. The lock is flock(2) on file descriptor 9, held for the life of the run: the
+# kernel drops it when the harness exits or is killed, so there is no stale lock to clear
+# and no reused pid to mistake for an owner. perl takes the lock on the shell's own
+# descriptor; flock belongs to the open file, so it outlives the perl process. Stages
+# inherit the descriptor, so the lock lasts until the last process of the run is gone; the
+# stage watchdog ends a stage whose harness was killed, which is what releases it then.
+LOCK_FILE="$LOG_ROOT/run.lock"
 LOCK_HELD=0
 
 acquire_lock() {
-	mkdir -p "$ROOT/.verify-logs"
-	if mkdir "$LOCK_DIR" 2>/dev/null; then
-		echo $$ >"$LOCK_DIR/pid"
-		LOCK_HELD=1
-		return 0
-	fi
-	local owner
-	owner="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
-	if [ -n "$owner" ] && kill -0 "$owner" 2>/dev/null; then
-		echo "verify: another run is in progress (pid $owner); wait for it or kill it" >&2
+	mkdir -p "$LOG_ROOT" || return 1
+	exec 9>>"$LOCK_FILE" || { echo "verify: cannot open $LOCK_FILE" >&2; return 1; }
+	if ! perl -MFcntl=:flock -e 'open(my $fh, ">&=", 9) or exit 2; flock($fh, LOCK_EX | LOCK_NB) or exit 1'; then
+		exec 9>&-
+		echo "verify: another run is in progress (pid $(cat "$LOCK_FILE.pid" 2>/dev/null || echo unknown)); wait for it or stop it" >&2
 		return 1
 	fi
-	echo "verify: clearing a stale lock from pid ${owner:-unknown}" >&2
-	rm -rf "$LOCK_DIR"
-	mkdir "$LOCK_DIR" 2>/dev/null || { echo "verify: could not take the lock" >&2; return 1; }
-	echo $$ >"$LOCK_DIR/pid"
+	echo $$ >"$LOCK_FILE.pid"
 	LOCK_HELD=1
 }
 
 release_lock() {
 	[ "$LOCK_HELD" -eq 1 ] || return 0
-	rm -rf "$LOCK_DIR"
+	rm -f "$LOCK_FILE.pid"
+	exec 9>&-
 	LOCK_HELD=0
 }
 
@@ -251,14 +270,32 @@ run_stage() {
 		set -Eeuo pipefail
 		export VERIFY_STEP_FILE="$step_file" VERIFY_LOG="$log"
 		# shellcheck source=/dev/null
-		. "$ROOT/scripts/verify/stages/$stage.sh"
+		. "$STAGE_DIR/$stage.sh"
 		"$fn"
 	) >>"$log" 2>&1 &
 	pgid=$!
 	track_pgid "$pgid"
-	# Watchdog: kills the stage's whole process group if it outlives its budget. Tracked
-	# too, so an interrupt cleans it up; cancelled below on the normal path.
-	( sleep "$limit"; : >"$timeout_flag"; kill -TERM -- "-$pgid" 2>/dev/null ) &
+	# Watchdog: ends the stage's whole process group when the stage outlives its budget, or
+	# when the harness itself is gone. SIGKILL cannot be trapped, and a stage left running
+	# would build on with no run waiting for it, holding the lock until it finished. Tracked
+	# too, so an interrupt cleans it up; cancelled below on the normal path. It drops the
+	# lock's descriptor, so the lock lasts exactly as long as the run's own processes.
+	(
+		harness=$$
+		waited=0
+		while [ "$waited" -lt "$limit" ]; do
+			sleep 1
+			if ! kill -0 "$harness" 2>/dev/null; then
+				kill -TERM -- "-$pgid" 2>/dev/null
+				sleep 2
+				kill -KILL -- "-$pgid" 2>/dev/null
+				exit 0
+			fi
+			waited=$((waited + 1))
+		done
+		: >"$timeout_flag"
+		kill -TERM -- "-$pgid" 2>/dev/null
+	) 9>&- &
 	watchdog=$!
 	track_pgid "$watchdog"
 	wait "$pgid" 2>/dev/null
@@ -269,6 +306,9 @@ run_stage() {
 
 	if [ -f "$timeout_flag" ]; then
 		rc=124
+		# The stage shell is gone, but a child that ignores TERM would keep writing to the
+		# build trees while the next stage runs.
+		kill -KILL -- "-$pgid" 2>/dev/null || true
 		echo "stage exceeded its ${limit}s budget and was terminated" >>"$log"
 	fi
 	CURRENT_STAGE=""

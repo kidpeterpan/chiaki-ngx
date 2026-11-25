@@ -61,7 +61,7 @@ lint_names() {
 
 lint_qml() {
 	local out errors warnings
-	out="$(qmllint gui/src/qml/translator/*.qml 2>&1 || true)"
+	out="$(qmllint gui/src/qml/translator/*.qml gui/src/qml/translator/*.js 2>&1 || true)"
 	printf '%s\n' "$out"
 	errors="$(printf '%s\n' "$out" | grep -c '^Error:' || true)"
 	warnings="$(printf '%s\n' "$out" | grep -c '^Warning:' || true)"

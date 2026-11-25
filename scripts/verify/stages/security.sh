@@ -4,9 +4,12 @@
 #   secrets   gitleaks over tracked and untracked, non-ignored files; allowlist in
 #             scripts/verify/gitleaks.toml, each entry with a reason
 #   audit     osv-scanner over the repo, including pinned submodules. Fails on HIGH or
-#             CRITICAL. Unrated entries are counted, not failed. A HIGH or CRITICAL
-#             finding may be accepted only by an unexpired entry in
-#             scripts/verify/audit-exceptions.txt. Scanner failures fail the stage.
+#             CRITICAL. Severity is the advisory's own label, else the CVSS base score
+#             osv-scanner reports, in the CVSS v3 bands (9.0+ CRITICAL, 7.0+ HIGH): many
+#             advisories, the submodule CVEs among them, carry only a score. Entries with
+#             neither are counted, not failed. A HIGH or CRITICAL finding may be accepted
+#             only by an unexpired entry in scripts/verify/audit-exceptions.txt. Scanner
+#             failures fail the stage.
 
 stage_security() {
 	soft_step "no credential-shaped files tracked" sec_tracked_files
@@ -87,17 +90,42 @@ with open(exceptions_path) as fh:
             sys.exit(1)
         exceptions[parts[0]] = (datetime.date.fromisoformat(parts[1][len("expires="):]), parts[2])
 
+def cvss_band(score):
+    if score >= 9.0:
+        return "CRITICAL"
+    if score >= 7.0:
+        return "HIGH"
+    if score >= 4.0:
+        return "MEDIUM"
+    return "LOW" if score > 0 else ""
+
+
+def severity_of(vuln, scores):
+    """The advisory's own label, else the band of the CVSS score osv-scanner computed."""
+    label = ((vuln.get("database_specific") or {}).get("severity") or "").upper()
+    if label:
+        return ("MEDIUM" if label == "MODERATE" else label), "label"
+    for key in [vuln.get("id"), *vuln.get("aliases", [])]:
+        try:
+            score = float(scores.get(key, ""))
+        except ValueError:
+            continue
+        return cvss_band(score), f"CVSS {score}"
+    return "", ""
+
+
 blocking, excepted, unrated = [], [], 0
 for result in json.load(open(report)).get("results", []):
     source = result.get("source", {}).get("path", "").replace(root + "/", "")
     for pkg in result.get("packages", []):
         name = pkg.get("package", {}).get("name") or "(submodule commit)"
         version = pkg.get("package", {}).get("version", "")
+        scores = {i: group.get("max_severity", "") for group in pkg.get("groups", []) for i in group.get("ids", [])}
         for vuln in pkg.get("vulnerabilities", []):
             vid = vuln.get("id", "?")
             aliases = vuln.get("aliases", [])
-            severity = ((vuln.get("database_specific") or {}).get("severity") or "").upper()
-            where = f"{name} {version} [{source}]".replace("  ", " ")
+            severity, basis = severity_of(vuln, scores)
+            where = f"{name} {version} [{source}] ({basis})".replace("  ", " ")
             if severity in ("HIGH", "CRITICAL"):
                 key = next((k for k in [vid, *aliases] if k in exceptions), None)
                 if key is None:
@@ -112,7 +140,7 @@ for result in json.load(open(report)).get("results", []):
                 unrated += 1
 
 print(f"  packages with advisories: {sum(1 for r in json.load(open(report)).get('results', []) for p in r.get('packages', []) if p.get('vulnerabilities'))}")
-print(f"  unrated (no severity in the advisory, counted not failed): {unrated}")
+print(f"  unrated (no label and no CVSS score, counted not failed): {unrated}")
 for line in excepted:
     print(f"  accepted: {line}")
 for line in blocking[:40]:

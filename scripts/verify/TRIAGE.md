@@ -32,6 +32,21 @@ builds. **medium** = a gap in coverage or reproducibility. **low** = noise.
   dated entries to `scripts/verify/audit-exceptions.txt`. The second option is a decision for a
   reviewer.
 
+### T16. 22 HIGH and CRITICAL CVEs in the bundled curl (found 2026-11-25, not yet decided)
+
+- Evidence: osv-scanner reports 8 CRITICAL and 14 HIGH CVEs against the `third-party/curl`
+  submodule, pinned at `75a2079` (2024-12-11). CRITICAL: CVE-2026-10536, CVE-2026-11856,
+  CVE-2026-18924, CVE-2026-19931, CVE-2026-8924, CVE-2026-8926, CVE-2026-8927, CVE-2026-9079.
+  Full list: `.verify-logs/latest/security.log`.
+- Why it was not seen before: these advisories carry a CVSS score but no severity label, and
+  the audit read only the label, so they were counted as unrated (T7). The audit now rates
+  them by CVSS score, so `security` fails.
+- curl ships inside the app, so these are not dev-only like T2.
+- Options: (a) move the submodule to a current curl release and rebuild (fixes the cause);
+  (b) accept specific IDs in `scripts/verify/audit-exceptions.txt`, each with an expiry and
+  a reason a human reviewed (for example, a code path chiaki-ngx does not use).
+  Per AGENTS.md rule 4 the vendored tree is not edited to clear an advisory.
+
 ## High
 
 ### T3. Bundled curl needs OpenSSL 3, while one source file needs OpenSSL 4 symbols
@@ -40,7 +55,7 @@ builds. **medium** = a gap in coverage or reproducibility. **low** = noise.
   removed in 4). `lib/src/aia_openssl.c` references `OPENSSL_sk_set_cmp_thunks` and
   `OPENSSL_sk_set_copy_thunks`, which exist only in OpenSSL 4 headers.
 - The harness's `test-unit` stage links both libcrypto builds to get a binary that links.
-  The repo's CI (`.github/workflows/build-macos.yml`) instead runs `brew unlink openssl@4`,
+  The repo's macOS CI (for example `.github/workflows/build-macos-arm.yml`) instead runs `brew unlink openssl@4`,
   so only OpenSSL 3 is visible.
 - Root cause to check: `aia_openssl.c` likely compiles against `/opt/homebrew/include`, which
   holds the OpenSSL 4 headers, because include directories are ordered before `CMAKE_C_FLAGS`.
@@ -75,11 +90,12 @@ builds. **medium** = a gap in coverage or reproducibility. **low** = noise.
 
 ## Medium
 
-### T7. 46 advisories have no severity rating
+### T7. Advisories without a severity rating (mostly resolved 2026-11-25)
 
-- These are counted and not failed, per the threshold policy. Most are in the bundled curl
-  submodule (`third-party/curl`, pinned at `75a2079`), which has about 100 advisory entries.
-- Action: check whether the pinned curl is current. Consider a newer curl submodule commit.
+- Was: 46 advisories had no severity label and were counted, not failed.
+- Resolved: the audit now falls back to the CVSS base score osv-scanner reports (9.0+
+  CRITICAL, 7.0+ HIGH). That surfaced the curl CVEs in T16. One advisory has neither a
+  label nor a score and is still only counted.
 
 ### T8. Shellcheck findings in upstream scripts
 
@@ -134,7 +150,12 @@ builds. **medium** = a gap in coverage or reproducibility. **low** = noise.
   CI's Linux job covers the core stages only; the full gate runs on macOS.
 - Action: extend the Linux CI job once a Qt image or cached dependency set is available.
 
-### T15. The translator cloud backend tests are not run by `--full`
+### T15. The translator cloud backend tests are not run by `--full` (resolved 2026-11-25)
+
+- Resolved: the `test-gui` stage configures a tests-on tree in `build-gui-tests/`, builds only
+  the `translator_*` test targets (read back from ctest) and runs every translator suite,
+  including the controller-driven QML panel suite. Original finding below.
+
 
 - Evidence: `gui/tests/translator/TestCloudBackends.cpp` (target `translator_cloud_tests`, a
   local mock server, no network) is defined in `gui/CMakeLists.txt` only when the GUI and

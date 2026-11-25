@@ -10,13 +10,14 @@ scripts/verify.sh --full           # before concluding any task (default when no
 scripts/verify.sh --stage NAME     # one stage plus its prerequisites; repeatable
 scripts/verify.sh --full --json    # machine-readable summary on stdout
 make verify | verify-quick | verify-json | verify-stage STAGE=NAME   # same commands
+scripts/verify/selftest.sh         # the harness's own tests; run after changing scripts/verify*
 ```
 
-Stages, in order: `env lint build-core test-core build-release test-unit smoke security`.
+Stages, in order: `env lint build-core test-core build-release test-unit test-gui smoke security`.
 
 `--full` cleans the build directories the harness owns (`build-core/`, `build-release/`,
-`build-unit/`). Measured on the development Mac: about 80 s end to end. It never touches
-`build-macos/`, which is the user's own build.
+`build-unit/`, `build-gui-tests/`). Measured on the development Mac: about 95 s end to end.
+It never touches `build-macos/`, which is the user's own build.
 
 ## Reading a result
 
@@ -25,7 +26,8 @@ Stages, in order: `env lint build-core test-core build-release test-unit smoke s
 - Full logs: `.verify-logs/latest/<stage>.log`. `.verify-logs/<run-id>/summary.json` has the
   same data in JSON. The last 20 runs are kept.
 - Exit codes: `0` PASS, `1` a verification stage failed, `2` an environment prerequisite is
-  missing (the `env` stage failed), `64` usage error, `130`/`143` interrupted.
+  missing (the `env` stage failed) or another run holds the lock, `64` usage error (including
+  a malformed `VERIFY_TIMEOUT_<STAGE>`), `130`/`143` interrupted.
 - A `SKIP` row means a stage was not run because a prerequisite failed. It counts as a failure.
 
 Read the log before changing code. The excerpt is a summary and can miss the real cause.
@@ -57,9 +59,9 @@ Read the log before changing code. The excerpt is a summary and can miss the rea
 | Environment and config | `env` | No `.env` or config schema exists, so there are no required config keys to check. |
 | Static analysis and types | `lint`, `build-core` | No formatter config exists. The compiler is the type checker, and `build-core` builds with warnings as errors. |
 | Clean production build | `build-release` | Delegates to `scripts/translator/build-macos.sh` with `BUILD_DIR=build-release`. |
-| Deterministic tests | `test-core`, `test-unit` | `TMPDIR` is per run and removed on exit. The tests use loopback sockets and `.invalid` URLs. Nothing enforces "no network". |
+| Deterministic tests | `test-core`, `test-unit`, `test-gui` | `test-core` is `translator_core`, `test-unit` is `lib/`, `test-gui` is every `translator_*` suite under `gui/tests/translator/` (cloud backends, cloud OCR, shortcuts, preferences, overlay geometry, the controller-driven QML panel). `TMPDIR` is per run and removed on exit. The tests use loopback sockets and `.invalid` URLs. Nothing enforces "no network". |
 | Runtime smoke | `smoke` | The OCR and dictionary probes check real outputs. `--help` on the app checks that it starts and touches no user state. The windowed boot is not covered (see TRIAGE). Health endpoints and migrations do not apply to a desktop client. |
-| Security and hygiene | `security` | Credential-shaped file names, gitleaks, and an osv-scanner audit that fails on HIGH and CRITICAL. Unrated advisories are counted, not failed. |
+| Security and hygiene | `security` | Credential-shaped file names, gitleaks, and an osv-scanner audit that fails on HIGH and CRITICAL. An advisory without its own severity label is rated by its CVSS base score (9.0+ CRITICAL, 7.0+ HIGH); only advisories with neither are counted instead of failed. |
 
 ## Prerequisites
 
@@ -76,10 +78,16 @@ into `build-verify/venv/`. Each run records exact tool versions in
 
 ## Robustness
 
-- Every stage has a time budget and is terminated if it exceeds it (reported as exit 124).
-  Override with `VERIFY_TIMEOUT_<STAGE>` in seconds, e.g. `VERIFY_TIMEOUT_BUILD_RELEASE=7200`.
-- A run holds a lock in `.verify-logs/lock`. A second run exits 2 rather than corrupting the
-  shared build trees; a lock whose owner is gone is cleared automatically.
+- Every stage has a time budget and is terminated if it exceeds it (reported as exit 124);
+  anything in it that ignores SIGTERM is then killed. Override with `VERIFY_TIMEOUT_<STAGE>`
+  in whole seconds, e.g. `VERIFY_TIMEOUT_BUILD_RELEASE=7200`.
+- A run holds `flock` on `.verify-logs/run.lock`. A second run exits 2 rather than corrupting
+  the shared build trees. The kernel releases the lock when the run's last process exits, so
+  a crashed run never leaves a stale lock: if the harness is killed outright, its stage
+  watchdog ends the running stage within a few seconds, which releases it.
+- `scripts/verify/selftest.sh` checks this contract (exit codes, skips, timeouts, the lock,
+  interrupts, the JSON summary, log pruning) with stand-in stages; CI runs it before the
+  full verification.
 - `TRANS_ONNX=OFF` builds without the OCR backend. The OCR smoke probe then reports itself as
   not covered instead of failing, because the probe binary is not built in that configuration.
 
