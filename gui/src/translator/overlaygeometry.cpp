@@ -2,6 +2,7 @@
 #include "translator/overlaygeometry.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace translator {
 
@@ -32,6 +33,55 @@ OverlayRect mapBoxToViewport(const trans::Rect &box, int source_width, int sourc
 	result.width = std::max(0.01, std::min(result.width, 1.0 - result.x));
 	result.height = std::max(0.01, std::min(result.height, 1.0 - result.y));
 	return result;
+}
+
+OverlayRect videoContentRect(double frame_aspect, double window_aspect, int mode,
+		double zoom_factor)
+{
+	if (frame_aspect <= 0.0 || window_aspect <= 0.0)
+		return {0.0, 0.0, 1.0, 1.0};
+	if (mode == 1)
+		return {0.0, 0.0, 1.0, 1.0};
+	OverlayRect base;
+	if (mode == 2)
+	{
+		if (zoom_factor < 0.0)
+		{
+			if (frame_aspect > window_aspect)
+			{
+				base.height = 1.0;
+				base.width = frame_aspect / window_aspect;
+			}
+			else
+			{
+				base.width = 1.0;
+				base.height = window_aspect / frame_aspect;
+			}
+			base.x = (1.0 - base.width) / 2.0;
+			base.y = (1.0 - base.height) / 2.0;
+			return base;
+		}
+		base = videoContentRect(frame_aspect, window_aspect, 0, -1.0);
+		const double scale = std::pow(2.0, zoom_factor);
+		base.width *= scale;
+		base.height *= scale;
+		base.x = (1.0 - base.width) / 2.0;
+		base.y = (1.0 - base.height) / 2.0;
+		return base;
+	}
+	if (frame_aspect > window_aspect)
+	{
+		base.width = 1.0;
+		base.height = window_aspect / frame_aspect;
+	}
+	else
+	{
+		base.height = 1.0;
+		base.width = frame_aspect / window_aspect;
+	}
+	base.x = (1.0 - base.width) / 2.0;
+	base.y = (1.0 - base.height) / 2.0;
+	return base;
 }
 
 void resolveOverlayOverlaps(std::vector<OverlayRect> &rects)

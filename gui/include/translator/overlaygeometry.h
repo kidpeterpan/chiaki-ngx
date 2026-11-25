@@ -24,4 +24,9 @@ OverlayRect mapBoxToViewport(const trans::Rect &box, int source_width, int sourc
 // boxes do not overlap horizontally and are left untouched.
 void resolveOverlayOverlaps(std::vector<OverlayRect> &rects);
 
+// Maps the decoded video frame into the window. mode: 0=normal, 1=stretch,
+// 2=zoom. zoom_factor -1 means cover; otherwise base-2 zoom.
+OverlayRect videoContentRect(double frame_aspect, double window_aspect, int mode,
+		double zoom_factor);
+
 } // namespace translator

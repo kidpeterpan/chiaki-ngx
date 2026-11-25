@@ -429,6 +429,19 @@ QString TranslatorManager::shortcutFromKey(int key, int modifiers) const
 	return translator::shortcutFromKey(key, modifiers);
 }
 
+QVariantMap TranslatorManager::videoViewport(qreal frameAspect, qreal windowAspect,
+	int mode, qreal zoomFactor) const
+{
+	const translator::OverlayRect rect = translator::videoContentRect(frameAspect, windowAspect,
+		mode, zoomFactor);
+	QVariantMap map;
+	map.insert(QStringLiteral("x"), rect.x);
+	map.insert(QStringLiteral("y"), rect.y);
+	map.insert(QStringLiteral("width"), rect.width);
+	map.insert(QStringLiteral("height"), rect.height);
+	return map;
+}
+
 void TranslatorManager::showSettings()
 {
 	emit settingsRequested();

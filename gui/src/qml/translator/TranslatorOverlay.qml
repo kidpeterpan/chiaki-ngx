@@ -20,6 +20,10 @@ Item {
     property bool autoHidden: false
     property string captureAction: ""
     readonly property bool menuOpen: settingsOpen || Translator.roiSelectionActive || Translator.backlogVisible || dictionaryOpen
+    readonly property var videoViewportRect: Translator.videoViewport(16.0 / 9.0,
+        height > 0 ? width / height : 16.0 / 9.0,
+        Chiaki.window ? Chiaki.window.videoMode : 0,
+        Chiaki.window ? Chiaki.window.ZoomFactor : -1)
 
     function saveHotkeys() {
         const ok = Translator.setShortcuts(shortcutEnableField.text, shortcutTranslateField.text,
@@ -94,8 +98,12 @@ Item {
                 maxX = Math.max(maxX, Number(region.x) + Number(region.width))
                 maxY = Math.max(maxY, Number(region.y) + Number(region.height))
             }
-            Chiaki.window.setTranslatorTouchRegion(minX * width, minY * height,
-                (maxX - minX) * width, (maxY - minY) * height,
+            const viewport = root.videoViewportRect
+            Chiaki.window.setTranslatorTouchRegion(
+                (viewport.x + minX * viewport.width) * width,
+                (viewport.y + minY * viewport.height) * height,
+                (maxX - minX) * viewport.width * width,
+                (maxY - minY) * viewport.height * height,
                 Translator.enabled && Translator.overlayVisible)
             return
         }
@@ -285,12 +293,14 @@ Item {
         model: Translator.overlayRegions
         delegate: Rectangle {
             id: regionBlock
-            readonly property real blockX: Number(modelData.x) * parent.width
-            readonly property real blockY: Number(modelData.y) * parent.height
+            readonly property real blockX: (root.videoViewportRect.x +
+                Number(modelData.x) * root.videoViewportRect.width) * parent.width
+            readonly property real blockY: (root.videoViewportRect.y +
+                Number(modelData.y) * root.videoViewportRect.height) * parent.height
             readonly property real blockW: Math.max(120, Math.min(parent.width - 8,
-                Number(modelData.width) * parent.width))
+                Number(modelData.width) * root.videoViewportRect.width * parent.width))
             readonly property real blockH: Math.max(44, Math.min(parent.height - 8,
-                Number(modelData.height) * parent.height + 8))
+                Number(modelData.height) * root.videoViewportRect.height * parent.height + 8))
             x: Math.max(4, Math.min(parent.width - blockW - 4, blockX))
             y: Math.max(4, Math.min(parent.height - blockH - 4, blockY))
             width: blockW
@@ -344,9 +354,12 @@ Item {
     Rectangle {
         id: subtitle
         readonly property bool inPlace: Translator.overlayPlacement === "inplace"
-        readonly property real roiX: Translator.roiNormalized.x * parent.width
-        readonly property real roiY: Translator.roiNormalized.y * parent.height
-        readonly property real roiW: Translator.roiNormalized.width * parent.width
+        readonly property real roiX: (root.videoViewportRect.x +
+            Translator.roiNormalized.x * root.videoViewportRect.width) * parent.width
+        readonly property real roiY: (root.videoViewportRect.y +
+            Translator.roiNormalized.y * root.videoViewportRect.height) * parent.height
+        readonly property real roiW: Translator.roiNormalized.width *
+            root.videoViewportRect.width * parent.width
         x: inPlace ? Math.max(4, Math.min(parent.width - width - 4, roiX)) : (parent.width - width) / 2
         y: inPlace ? Math.max(4, Math.min(parent.height - height - 4, roiY)) : parent.height - height - 28
         width: inPlace ? Math.max(120, Math.min(parent.width - 8, roiW)) : Math.min(parent.width * 0.88, 980)

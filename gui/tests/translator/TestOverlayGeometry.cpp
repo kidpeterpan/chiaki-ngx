@@ -46,6 +46,36 @@ int main()
 		return 1;
 	}
 
-	std::printf("PASS overlay geometry mapping and overlap resolution\n");
+	const translator::OverlayRect letterbox = translator::videoContentRect(16.0 / 9.0, 4.0 / 3.0, 0, -1.0);
+	if (std::abs(letterbox.height - 0.75) > epsilon || std::abs(letterbox.y - 0.125) > epsilon)
+	{
+		std::fprintf(stderr, "letterbox mapping failed\n");
+		return 1;
+	}
+	const translator::OverlayRect pillarbox = translator::videoContentRect(4.0 / 3.0, 16.0 / 9.0, 0, -1.0);
+	if (std::abs(pillarbox.width - 0.75) > epsilon || std::abs(pillarbox.x - 0.125) > epsilon)
+	{
+		std::fprintf(stderr, "pillarbox mapping failed\n");
+		return 1;
+	}
+	const translator::OverlayRect stretch = translator::videoContentRect(4.0 / 3.0, 16.0 / 9.0, 1, -1.0);
+	if (stretch.x != 0.0 || stretch.y != 0.0 || stretch.width != 1.0 || stretch.height != 1.0)
+	{
+		std::fprintf(stderr, "stretch mapping failed\n");
+		return 1;
+	}
+	const translator::OverlayRect cover = translator::videoContentRect(4.0 / 3.0, 16.0 / 9.0, 2, -1.0);
+	if (cover.width < 1.0 || cover.x > 0.0)
+	{
+		std::fprintf(stderr, "zoom-cover mapping failed\n");
+		return 1;
+	}
+	const translator::OverlayRect zoomed = translator::videoContentRect(16.0 / 9.0, 16.0 / 9.0, 2, 1.0);
+	if (std::abs(zoomed.width - 2.0) > epsilon || std::abs(zoomed.x + 0.5) > epsilon)
+	{
+		std::fprintf(stderr, "positive zoom mapping failed\n");
+		return 1;
+	}
+	std::printf("PASS overlay geometry mapping, letterbox/zoom and overlap resolution\n");
 	return 0;
 }

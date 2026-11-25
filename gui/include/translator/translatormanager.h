@@ -120,6 +120,8 @@ public:
 	Q_INVOKABLE void resetShortcuts();
 	Q_INVOKABLE void showSettings();
 	Q_INVOKABLE QString shortcutFromKey(int key, int modifiers) const;
+	Q_INVOKABLE QVariantMap videoViewport(qreal frameAspect, qreal windowAspect,
+		int mode, qreal zoomFactor) const;
 	void setOverlayAutoHideSeconds(int seconds);
 	void setScanIntervalMs(int milliseconds);
 	void setStableMs(int milliseconds);
