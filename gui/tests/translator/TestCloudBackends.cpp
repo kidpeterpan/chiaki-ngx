@@ -550,6 +550,41 @@ int main(int argc, char **argv)
 		std::printf("PASS google cloud parse\n");
 	}
 
+	// Settings change while a reply is in flight: TranslatorManager::restartPipeline() drops
+	// every owner except the pending reply callback, which keeps the backend alive. The
+	// callback must not destroy the backend from inside its own finished-signal slot.
+	{
+		struct Owner
+		{
+			std::shared_ptr<trans::TranslatorBackend> backend;
+		};
+		MockServer mock;
+		if (!mock.start())
+			return Fail("mock server failed to listen");
+		mock.response.respond = false;
+		CloudBackendOptions options;
+		options.provider = "google";
+		options.google_translate_endpoint = QUrl(mock.base_url() + "/translate_a/single");
+		options.timeout_ms = 150;
+		trans::TranslationRequest request;
+		request.text = "こんにちは";
+		request.source_language = "Japanese";
+		request.target_language = "th";
+
+		auto backend = std::make_shared<CloudTranslatorBackend>(options);
+		auto owner = std::make_shared<Owner>();
+		owner->backend = backend;
+		bool done = false;
+		backend->translate(request, [owner, &done](trans::TranslationResult) { done = true; });
+		if (!WaitFor([&]() { return !mock.last_path.isEmpty(); }))
+			return Fail("restart test: request never reached the mock");
+		backend.reset();
+		owner.reset();
+		if (!WaitFor([&]() { return done; }, 3000))
+			return Fail("restart test: reply callback not invoked after restart");
+		std::printf("PASS restart with reply in flight\n");
+	}
+
 	std::printf("%d failure(s)\n", failures);
 	return failures == 0 ? 0 : 1;
 }
