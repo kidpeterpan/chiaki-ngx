@@ -17,8 +17,8 @@ download() {
 	echo "downloading $url"
 	local temp="${output}.part"
 	rm -f "$temp"
-	curl -fL --retry 5 --retry-all-errors --retry-delay 5 \
-		--connect-timeout 30 --max-time 900 -o "$temp" "$url"
+	curl -fL --retry 8 --retry-all-errors --retry-delay 5 \
+		--connect-timeout 15 --max-time 300 -o "$temp" "$url"
 	mv "$temp" "$output"
 }
 
@@ -30,7 +30,11 @@ download "https://huggingface.co/cycloneboy/japan_PP-OCRv3_rec_infer/resolve/mai
 	"$MODELS/japan_dict.txt"
 
 JMdict="/tmp/JMdict_e.gz"
-download "https://www.edrdg.org/pub/Nihongo/JMdict_e.gz" "$JMdict"
+if ! download "https://www.edrdg.org/pub/Nihongo/JMdict_e.gz" "$JMdict"; then
+	echo "HTTPS download failed; trying the edrdg FTP-over-HTTP mirror" >&2
+	rm -f "${JMdict}.part"
+	download "http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz" "$JMdict"
+fi
 
 echo "building $DICT/jmdict.db (about 83 MB) ..."
 python3 "$ROOT/translator_core/tools/build_jmdict.py" --input "$JMdict" --output "$DICT/jmdict.db"
