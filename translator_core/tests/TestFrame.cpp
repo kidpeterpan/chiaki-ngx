@@ -42,6 +42,49 @@ void DrawGlyphs(GrayscaleFrame &frame, int glyph_count)
 	}
 }
 
+// A scene seen through a see-through dialogue box: a narrow brightness band around `base`
+// whose pattern shifts on every sample.
+void FillMovingBackground(GrayscaleFrame &frame, int sample, int base, int amplitude)
+{
+	const int span = 2 * amplitude + 1;
+	for (int y = 0; y < frame.height; ++y)
+	{
+		for (int x = 0; x < frame.width; ++x)
+		{
+			const int value = base - amplitude + (x * 7 + y * 3 + sample * 13) % span;
+			frame.pixels[static_cast<size_t>(y) * frame.stride + x] = static_cast<uint8_t>(value);
+		}
+	}
+}
+
+// Glyph blocks at positions that depend on `variant`, so two variants are two different lines.
+void DrawGlyphLine(GrayscaleFrame &frame, int variant, uint8_t value)
+{
+	for (int glyph = 0; glyph < 6; ++glyph)
+	{
+		const int left = 10 + glyph * 16 + (variant % 2) * 8;
+		const int top = variant == 0 ? 10 : 18;
+		for (int y = top; y < top + 12; ++y)
+		{
+			for (int x = left; x < left + 6; ++x)
+				frame.pixels[static_cast<size_t>(y) * frame.stride + x] = value;
+		}
+	}
+}
+
+FrameProcessorConfig LiveConfig(int width, int height)
+{
+	FrameProcessorConfig config;
+	config.roi = Rect{0, 0, width, height};
+	config.sample_interval_ms = 100;
+	config.stable_ms = 250;
+	config.still_changed_ratio = 0.002;
+	config.still_mean_abs_delta = 1.0;
+	config.pixel_delta_threshold = 14;
+	config.min_stddev = 2.0;
+	return config;
+}
+
 FrameView GrayView(const GrayscaleFrame &frame)
 {
 	FrameView view;
@@ -325,6 +368,68 @@ TEST(frame_stabilizer_ignores_blank_frames)
 	ASSERT_FALSE(processor.process(GrayView(blank), 100).stable);
 	ASSERT_FALSE(processor.process(GrayView(blank), 200).stable);
 	ASSERT_FALSE(processor.process(GrayView(blank), 300).stable);
+}
+
+TEST(frame_text_settles_over_moving_background)
+{
+	FrameProcessor processor(LiveConfig(120, 40));
+	int stable_samples = 0;
+	ProcessResult last;
+	for (int sample = 0; sample < 10; ++sample)
+	{
+		GrayscaleFrame frame = MakeGray(120, 40, 0);
+		FillMovingBackground(frame, sample, 60, 30);
+		DrawGlyphLine(frame, 0, 240);
+		last = processor.process(GrayView(frame), sample * 100);
+		if (sample > 0)
+			ASSERT_TRUE(last.changed_ratio > 0.002);
+		if (last.stable)
+			++stable_samples;
+	}
+	ASSERT_EQ(stable_samples, 1);
+	ASSERT_TRUE(last.unsettled_ms > 0);
+}
+
+TEST(frame_text_change_starts_new_generation)
+{
+	FrameProcessor processor(LiveConfig(120, 40));
+	std::vector<uint64_t> stable_generations;
+	for (int sample = 0; sample < 10; ++sample)
+	{
+		GrayscaleFrame frame = MakeGray(120, 40, 0);
+		FillMovingBackground(frame, sample, 60, 30);
+		DrawGlyphLine(frame, sample < 5 ? 0 : 1, 240);
+		const ProcessResult result = processor.process(GrayView(frame), sample * 100);
+		if (result.stable)
+			stable_generations.push_back(result.generation);
+	}
+	ASSERT_EQ(stable_generations.size(), static_cast<size_t>(2));
+	ASSERT_TRUE(stable_generations[0] != stable_generations[1]);
+}
+
+TEST(frame_dark_text_on_light_box_settles)
+{
+	FrameProcessor processor(LiveConfig(120, 40));
+	bool emitted = false;
+	for (int sample = 0; sample < 10; ++sample)
+	{
+		GrayscaleFrame frame = MakeGray(120, 40, 0);
+		FillMovingBackground(frame, sample, 230, 20);
+		DrawGlyphLine(frame, 0, 20);
+		emitted = processor.process(GrayView(frame), sample * 100).stable || emitted;
+	}
+	ASSERT_TRUE(emitted);
+}
+
+TEST(frame_static_mid_grey_text_still_settles)
+{
+	FrameProcessor processor(LiveConfig(120, 40));
+	GrayscaleFrame frame = MakeGray(120, 40, 60);
+	DrawGlyphLine(frame, 0, 150);
+	bool emitted = false;
+	for (int sample = 0; sample < 5; ++sample)
+		emitted = processor.process(GrayView(frame), sample * 100).stable || emitted;
+	ASSERT_TRUE(emitted);
 }
 
 TEST(frame_adaptive_threshold_is_binary)
