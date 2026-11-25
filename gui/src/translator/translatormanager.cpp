@@ -305,8 +305,6 @@ void TranslatorManager::setBackendId(const QString &backend_id)
 	backend_id_ = backend_id;
 	QSettings().setValue(QStringLiteral("translator/backend"), backend_id_);
 	emit backendIdChanged();
-	if (prepared_.load())
-		restartPipeline();
 }
 
 void TranslatorManager::setOcrProvider(const QString &provider)
@@ -316,8 +314,6 @@ void TranslatorManager::setOcrProvider(const QString &provider)
 	ocr_provider_ = provider;
 	QSettings().setValue(QStringLiteral("translator/ocr"), ocr_provider_);
 	emit ocrProviderChanged();
-	if (prepared_.load())
-		restartPipeline();
 }
 
 void TranslatorManager::setOcrApiKey(const QString &key)
@@ -327,8 +323,6 @@ void TranslatorManager::setOcrApiKey(const QString &key)
 	ocr_api_key_ = key;
 	QSettings().setValue(QStringLiteral("translator/ocr_api_key"), ocr_api_key_);
 	emit ocrApiKeyChanged();
-	if (prepared_.load())
-		restartPipeline();
 }
 
 bool TranslatorManager::setShortcuts(const QString &enable, const QString &translate,
@@ -408,8 +402,6 @@ void TranslatorManager::setScanIntervalMs(int milliseconds)
 	scan_interval_ms_ = clamped;
 	QSettings().setValue(QStringLiteral("translator/scan_interval_ms"), clamped);
 	emit timingChanged();
-	if (prepared_.load())
-		restartPipeline();
 }
 
 void TranslatorManager::setStableMs(int milliseconds)
@@ -420,8 +412,6 @@ void TranslatorManager::setStableMs(int milliseconds)
 	stable_ms_ = clamped;
 	QSettings().setValue(QStringLiteral("translator/stable_ms"), clamped);
 	emit timingChanged();
-	if (prepared_.load())
-		restartPipeline();
 }
 
 QString TranslatorManager::shortcutFromKey(int key, int modifiers) const
@@ -454,8 +444,6 @@ void TranslatorManager::setTargetLanguage(const QString &language)
 	target_language_ = language;
 	QSettings().setValue(QStringLiteral("translator/target"), target_language_);
 	emit targetLanguageChanged();
-	if (prepared_.load())
-		restartPipeline();
 }
 
 void TranslatorManager::setStatus(const QString &status)
@@ -1160,8 +1148,6 @@ void TranslatorManager::setApiKey(const QString &backend_id, const QString &key)
 	QSettings settings;
 	settings.setValue(QStringLiteral("translator/api_key/") + backend_id, key.trimmed());
 	settings.sync();
-	if (backend_id == backend_id_ && prepared_.load())
-		restartPipeline();
 }
 
 QString TranslatorManager::baseUrl(const QString &backend_id) const
@@ -1175,8 +1161,6 @@ void TranslatorManager::setBaseUrl(const QString &backend_id, const QString &url
 	QSettings settings;
 	settings.setValue(QStringLiteral("translator/base_url/") + backend_id, url.trimmed());
 	settings.sync();
-	if (backend_id == backend_id_ && prepared_.load())
-		restartPipeline();
 }
 
 QString TranslatorManager::model(const QString &backend_id) const
@@ -1194,8 +1178,6 @@ void TranslatorManager::setModel(const QString &backend_id, const QString &model
 	QSettings settings;
 	settings.setValue(QStringLiteral("translator/model/") + backend_id, model_name.trimmed());
 	settings.sync();
-	if (backend_id == backend_id_ && prepared_.load())
-		restartPipeline();
 }
 
 void TranslatorManager::applySettings()
@@ -1213,8 +1195,6 @@ void TranslatorManager::setNllbModelPath(const QString &path)
 	nllb_model_path_ = path.trimmed();
 	QSettings().setValue(QStringLiteral("translator/nllb_model"), nllb_model_path_);
 	emit nllbModelPathChanged();
-	if (backend_id_ == QStringLiteral("offline") && prepared_.load())
-		restartPipeline();
 }
 
 void TranslatorManager::setPreprocess(const QString &mode)
@@ -1224,8 +1204,6 @@ void TranslatorManager::setPreprocess(const QString &mode)
 	preprocess_ = mode;
 	QSettings().setValue(QStringLiteral("translator/preprocess"), preprocess_);
 	emit preprocessChanged();
-	if (prepared_.load())
-		restartPipeline();
 }
 
 void TranslatorManager::setDictionaryLookup(const std::vector<trans::DictEntry> &entries,

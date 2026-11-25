@@ -75,6 +75,11 @@ Item {
             Chiaki.window.releaseInput()
     }
 
+    onSettingsOpenChanged: {
+        if (!settingsOpen && Translator.enabled && Chiaki.session)
+            Translator.applySettings()
+    }
+
     Component.onDestruction: {
         if (menuOpen && Chiaki.window)
             Chiaki.window.releaseInput()
