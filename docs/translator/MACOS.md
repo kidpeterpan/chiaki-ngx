@@ -7,7 +7,7 @@
 
 **[chiaki-ngx-translator-arm64.dmg](https://github.com/kidpeterpan/chiaki-ngx/releases/download/v0.2.5-translator/chiaki-ngx-translator-arm64.dmg)**
 
-- SHA-256: `8aa049a467295b8f0f5382e56347ddc3d6928ca564cdf97869ab1c9f65907993`
+- SHA-256: `cfe2c71204896051af5ba61f7a9be43f6010d5839479333e0e271e416487b034`
 - เปิด DMG → ลาก `chiaki-ngx.app` ไป Applications → คลิกขวา → Open ครั้งแรก (ad-hoc signed)
 - ต้องใช้ macOS 15+ (build จาก `macos-15` runner) และ Apple Silicon
 - แอปมี assets อยู่ที่ `Contents/Resources/translator`

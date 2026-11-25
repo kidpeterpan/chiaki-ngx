@@ -2,15 +2,15 @@
 
 ## ดาวน์โหลด
 
-**[chiaki-ngx-translator-x86_64.AppImage](https://github.com/kidpeterpan/chiaki-ngx/releases/download/v0.2.2-translator/chiaki-ngx-translator-x86_64.AppImage)** — 219 MB
+**[chiaki-ngx-translator-x86_64.AppImage](https://github.com/kidpeterpan/chiaki-ngx/releases/download/v0.2.5-translator/chiaki-ngx-translator-x86_64.AppImage)** — 286 MB
 
 SHA-256:
 
 ```text
-e340488845bfcb728620c7743dffe4e7c94f06097025b4f8ece9c10277185c5f
+311c6459e2104a44d9558426aefad25afa5d8eb7c52c99eb321b917a1dc84e4c
 ```
 
-ใช้ **v0.2.2** ขึ้นไป (AppImage v0.2.5 ยังรอ GitHub Actions billing) ซึ่งมีทั้ง touch fix และ Decky-Translator providers ครบ (v0.1.0 มีบั๊ก touch)
+ใช้ **v0.2.5** ซึ่งมี real-time toggle, touch fix, Chrome Screen AI และ Decky-Translator providers ครบ
 
 ไฟล์ `.sha256` อยู่ใน release เดียวกัน
 
@@ -37,14 +37,14 @@ e340488845bfcb728620c7743dffe4e7c94f06097025b4f8ece9c10277185c5f
 
 ## Touch บน Steam Deck
 
-ตั้งแต่ **v0.2.1** (และ v0.2.2):
+ตั้งแต่ **v0.2.1** ขึ้นไป (v0.2.5 แนะนำ):
 
 - แตะไอคอน **訳** มุมขวาบนได้เลย แม้เกมกำลังใช้ touchscreen เป็น PS touchpad
 - เมื่อเมนูเปิด ระบบจะ `grabInput()` ให้ touch ทั้งหมดมาที่ overlay จึงกดปุ่ม/เลือก ROI/เปิด backlog ได้
 - แตะที่คำแปลเพื่อเปิด JMdict
 - ปิดเมนูแล้ว touch จะกลับไปเป็น PS touchpad ตามเดิม
 
-ถ้าใช้เวอร์ชันเก่าแล้วแตะไม่ติด ให้อัปเดตเป็น v0.2.2
+ถ้าใช้เวอร์ชันเก่าแล้วแตะไม่ติด ให้อัปเดตเป็น v0.2.5
 
 ## Chrome Screen AI
 
