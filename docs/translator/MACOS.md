@@ -5,9 +5,9 @@
 มี **DMG สำหรับ Apple Silicon (arm64)** ที่รวม Qt/FFmpeg/libplacebo/ONNX Runtime
 และ JMdict เต็มไว้แล้ว (ไม่ต้องติดตั้ง Homebrew):
 
-**[chiaki-ngx-translator-arm64.dmg](https://github.com/kidpeterpan/chiaki-ngx/releases/download/v0.2.1-translator/chiaki-ngx-translator-arm64.dmg)**
+**[chiaki-ngx-translator-arm64.dmg](https://github.com/kidpeterpan/chiaki-ngx/releases/download/v0.2.2-translator/chiaki-ngx-translator-arm64.dmg)**
 
-- SHA-256: `d5dd41c8f45cc42cda78e3b9f80c6fd3d8484186bd2f208588a687d838661bc7`
+- SHA-256: `8abc18be871c5521a6c55611d625f432648d3cad4490e3d5872074323efe716f`
 - เปิด DMG → ลาก `chiaki-ngx.app` ไป Applications → คลิกขวา → Open ครั้งแรก (ad-hoc signed)
 - ต้องใช้ macOS 15+ (build จาก `macos-15` runner) และ Apple Silicon
 - แอปมี assets อยู่ที่ `Contents/Resources/translator`

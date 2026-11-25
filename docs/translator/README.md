@@ -84,7 +84,7 @@ python3 translator_core/tools/build_jmdict.py \
 
 ## Build ทั้งโปรเจกต์
 
-Steam Deck: ดาวน์โหลด [AppImage](STEAMDECK.md) — macOS: ดาวน์โหลด DMG ได้จาก [release](https://github.com/kidpeterpan/chiaki-ngx/releases/tag/v0.2.1-translator) หรือ build เองด้วย [`build-macos.sh`](../../scripts/translator/build-macos.sh) — ดู [MACOS.md](MACOS.md)
+Steam Deck: ดาวน์โหลด [AppImage](STEAMDECK.md) — macOS: ดาวน์โหลด DMG ได้จาก [release](https://github.com/kidpeterpan/chiaki-ngx/releases/tag/v0.2.2-translator) หรือ build เองด้วย [`build-macos.sh`](../../scripts/translator/build-macos.sh) — ดู [MACOS.md](MACOS.md)
 
 ```bash
 cmake -S . -B build -G Ninja \

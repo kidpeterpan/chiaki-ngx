@@ -20,7 +20,7 @@
 | Google translation | mock tests | Google Translate (free) + Google Cloud Translation ผ่าน mock HTTP; ยังไม่ทดสอบ key จริง |
 | RapidOCR PP-OCRv5 | probe | อ่าน `ゲームを続けよう` ได้ conf 1.000, ~29 ms บน M1; เลือกได้ใน QML |
 | Touch routing | v0.2.1 | แตะ 訳 เพื่อเปิดเมนู, grabInput ระหว่างเมนู, แตะคำแปลเพื่อ JMdict; แก้ใน `qmlmainwindow.cpp`/`TranslatorOverlay.qml` |
-| Steam Deck AppImage | CI `Build translator AppImage x86_64` | สำเร็จ; glibc max 2.31; มี models/dict/ONNX; `AppRun --help` ผ่าน |
+| Steam Deck AppImage | CI `Release chiaki-ngx translator` v0.2.2 | สำเร็จ; มี RapidOCR PP-OCRv5 + models/dict/ONNX; glibc 2.31 |
 | macOS DMG | CI `Build chiaki-ngx macOSX` + full dict | สำเร็จ; mount DMG แล้ว `--help` ทำงาน, ONNX ถูก bundle ใน `Frameworks` |
 | Repo health | `scripts/verify.sh --full` | PASS ทุก stage: env/lint/build-core/test-core/build-release/test-unit/smoke/security (77s) |
 | CI translator tests | GitHub Actions `Translator tests` | success บน main/feature (58a4e0f) |
