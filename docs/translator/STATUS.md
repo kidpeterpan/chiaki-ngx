@@ -17,6 +17,7 @@
 | macOS app bundle | `build-macos.sh` + launch | `chiaki.app` มี assets ใน Resources/translator; QML Main โหลดไม่มี translator error |
 | Gemini Vision | mock test | ส่งภาพ + ขอ JSON regions พร้อม `translatedText`; pipeline ใช้คำแปลโดยไม่เรียก backend ซ้ำ |
 | Live endpoints | curl (2026-11-25) | Google Translate free ja→th คืนคำแปลจริง; OCR.space `helloworld` อ่าน fixture ได้ `ゲームを続けよう` |
+| CI release blocker | GitHub Actions 2026-11-25 | v0.2.4 เริ่ม job ไม่ได้: "recent account payments have failed or your spending limit needs to be increased" |
 | Chrome Screen AI | C++ probe | โหลด `libchromescreenai.so` + TFLite, อ่าน `ゲームを続けよう` ได้; Linux x86_64 |
 | Cloud OCR | mock tests | Google Cloud Vision + OCR.space parse ผ่าน; ยังไม่ทดสอบ key จริง |
 | Google translation | mock tests | Google Translate (free) + Google Cloud Translation ผ่าน mock HTTP; ยังไม่ทดสอบ key จริง |

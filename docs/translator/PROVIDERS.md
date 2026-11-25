@@ -53,5 +53,6 @@ RapidOCR ใช้ PP-OCRv5 mobile det + `ch_rec.onnx` + `ch_dict.txt`
 
 - ทดสอบ Chrome Screen AI บน Steam Deck เครื่องจริง (ทดสอบ engine ด้วย lib จริงบน Linux แล้ว)
 - ทดสอบ provider จริงด้วย API key บน Steam Deck
+- release v0.2.4 ที่รวม Chrome Screen AI ยัง build ไม่ได้เพราะ GitHub Actions billing/spending limit
 - Gemini Vision ยังใช้ชื่อโมเดล `gemini-2.5-flash` คงที่
 - OCR.space rate-limit (10 ครั้ง/10 นาที) ยังไม่ได้ทำ local throttling

@@ -46,6 +46,16 @@ e340488845bfcb728620c7743dffe4e7c94f06097025b4f8ece9c10277185c5f
 
 ถ้าใช้เวอร์ชันเก่าแล้วแตะไม่ติด ให้อัปเดตเป็น v0.2.2
 
+## Chrome Screen AI
+
+รองรับใน source แล้ว (Linux x86_64) แต่ **release v0.2.2 ยังไม่มี** เพราะ GitHub Actions
+ติด billing/spending limit ตอนสร้าง v0.2.4 — build เองด้วย:
+
+```bash
+scripts/translator/fetch-assets.sh   # includes fetch-screenai on Linux x86_64
+scripts/translator/build-appimage.sh
+```
+
 ## ใช้งาน
 
 1. เชื่อมต่อ PS5 ตามปกติ
