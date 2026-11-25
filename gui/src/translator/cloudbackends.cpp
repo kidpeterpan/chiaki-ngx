@@ -457,6 +457,13 @@ void CloudTranslatorBackend::finish(QNetworkReply *reply, trans::TranslationCall
 	reply->deleteLater();
 	if (!options_.api_key.isEmpty() && !result.error.empty())
 		result.error = QString::fromStdString(result.error).replace(options_.api_key, QStringLiteral("***")).toStdString();
-	if (callback)
-		callback(std::move(result));
+	// Defer the callback: it can hold the last reference to this backend (a settings change
+	// restarts the pipeline while a reply is in flight). Releasing it here would destroy the
+	// backend and its child QNetworkReply synchronously, while the deleteLater() above is
+	// still queued and fires on the freed reply. Queued after deleteLater(), so the reply is
+	// deleted first and the backend is released from the event loop.
+	QTimer::singleShot(0, [callback = std::move(callback), result = std::move(result)]() mutable {
+		if (callback)
+			callback(std::move(result));
+	});
 }
