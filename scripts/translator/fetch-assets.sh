@@ -15,7 +15,11 @@ download() {
 		return
 	fi
 	echo "downloading $url"
-	curl -fL --retry 3 --retry-delay 2 -o "$output" "$url"
+	local temp="${output}.part"
+	rm -f "$temp"
+	curl -fL --retry 5 --retry-all-errors --retry-delay 5 \
+		--connect-timeout 30 --max-time 900 -o "$temp" "$url"
+	mv "$temp" "$output"
 }
 
 download "https://huggingface.co/cycloneboy/ch_PP-OCRv3_det_infer/resolve/main/model.onnx" \

@@ -2,13 +2,15 @@
 
 ## ดาวน์โหลด
 
-**[chiaki-ngx-translator-x86_64.AppImage](https://github.com/kidpeterpan/chiaki-ngx/releases/download/v0.1.0-steamdeck/chiaki-ngx-translator-x86_64.AppImage)** — 201 MB
+**[chiaki-ngx-translator-x86_64.AppImage](https://github.com/kidpeterpan/chiaki-ngx/releases/download/v0.2.1-translator/chiaki-ngx-translator-x86_64.AppImage)** — 201 MB
 
 SHA-256:
 
 ```text
-ae1f41a2bd3b4a02e7e33219aaf8232cfbcca234fa88b934f54d66096af56bff
+b793147392b8632beab4a14a788f97a75add1358e11458143c7dccf18342e32e
 ```
+
+ใช้ **v0.2.1** ขึ้นไปสำหรับ touch ที่แก้แล้ว (v0.1.0-steamdeck ยังมีบั๊กเดิม)
 
 ไฟล์ `.sha256` อยู่ใน release เดียวกัน
 
@@ -32,6 +34,17 @@ ae1f41a2bd3b4a02e7e33219aaf8232cfbcca234fa88b934f54d66096af56bff
 ```
 
 หรือเพิ่ม `--appimage-extract-and-run` ใน Launch Options ของ Steam
+
+## Touch บน Steam Deck
+
+ตั้งแต่ **v0.2.1**:
+
+- แตะไอคอน **訳** มุมขวาบนได้เลย แม้เกมกำลังใช้ touchscreen เป็น PS touchpad
+- เมื่อเมนูเปิด ระบบจะ `grabInput()` ให้ touch ทั้งหมดมาที่ overlay จึงกดปุ่ม/เลือก ROI/เปิด backlog ได้
+- แตะที่คำแปลเพื่อเปิด JMdict
+- ปิดเมนูแล้ว touch จะกลับไปเป็น PS touchpad ตามเดิม
+
+ถ้าใช้เวอร์ชันเก่าแล้วแตะไม่ติด ให้อัปเดตเป็น v0.2.1
 
 ## ใช้งาน
 
