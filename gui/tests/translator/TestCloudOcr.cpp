@@ -12,6 +12,10 @@
 
 #include <cstdio>
 #include <memory>
+#include <atomic>
+#include <chrono>
+#include <thread>
+#include <vector>
 
 namespace {
 
@@ -96,7 +100,10 @@ int main(int argc, char **argv)
 			return Fail("google vision load failed");
 		const auto lines = engine.recognize(TestImage(), &error);
 		if (lines.size() != 2 || lines[0].text != "ゲームを続けよう" || lines[1].text != "二行目")
+		{
+			std::fprintf(stderr, "google lines=%zu error=%s\n", lines.size(), error.c_str());
 			return Fail("google vision text was not parsed");
+		}
 		std::printf("PASS google vision cloud OCR\n");
 	}
 
@@ -149,6 +156,39 @@ int main(int argc, char **argv)
 		if (lines.size() != 2 || lines[0].text != "สวัสดี" || lines[1].text != "โลก")
 			return Fail("ocr.space text was not parsed");
 		std::printf("PASS ocr.space cloud OCR\n");
+	}
+
+	{
+		// The pipeline calls recognize() from its worker thread. QNetworkAccessManager
+		// and QEventLoop must work without the GUI thread.
+		MockServer mock;
+		if (!mock.start())
+			return Fail("mock server did not listen");
+		mock.response_body = R"({"responses":[{"fullTextAnnotation":{"text":"worker"}}]})";
+		CloudOcrEngine engine;
+		std::string load_error;
+		trans::OcrConfig config;
+		config.cloud_provider = "google-vision";
+		config.cloud_api_key = "test-key";
+		config.cloud_endpoint = mock.url(QStringLiteral("/worker")).toStdString();
+		if (!engine.load(config, &load_error))
+			return Fail("worker cloud OCR load failed");
+		std::vector<trans::OcrLine> lines;
+		std::string error;
+		std::atomic<bool> done{false};
+		std::thread worker([&]() {
+			lines = engine.recognize(TestImage(), &error);
+			done = true;
+		});
+		while (!done)
+		{
+			QCoreApplication::processEvents();
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+		worker.join();
+		if (lines.size() != 1 || lines[0].text != "worker")
+			return Fail("cloud OCR failed on a worker thread");
+		std::printf("PASS cloud OCR worker thread\n");
 	}
 
 	{

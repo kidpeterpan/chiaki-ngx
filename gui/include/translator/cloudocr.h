@@ -16,6 +16,8 @@ public:
 	bool ready() const override { return ready_; }
 
 private:
+	std::vector<trans::OcrLine> recognizeOnThread(const trans::Image &image, std::string *error);
+
 	std::string name_ = "cloud-ocr";
 	std::string provider_;
 	std::string api_key_;

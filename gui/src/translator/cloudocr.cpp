@@ -111,6 +111,11 @@ bool CloudOcrEngine::load(const trans::OcrConfig &config, std::string *error)
 
 std::vector<trans::OcrLine> CloudOcrEngine::recognize(const trans::Image &image, std::string *error)
 {
+	return recognizeOnThread(image, error);
+}
+
+std::vector<trans::OcrLine> CloudOcrEngine::recognizeOnThread(const trans::Image &image, std::string *error)
+{
 	std::vector<trans::OcrLine> lines;
 	if (!ready_ || image.empty())
 		return lines;
