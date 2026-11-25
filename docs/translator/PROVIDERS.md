@@ -9,8 +9,8 @@ chiaki-ngx รองรับทั้ง OCR ในเครื่องแล�
 | --- | --- | --- | --- |
 | PaddleOCR PP-OCRv3 (Japan rec) | on-device ONNX | ค่าเริ่มต้น, ทดสอบแล้ว | models ใน `assets/models/` |
 | RapidOCR PP-OCRv5 | on-device ONNX | เลือกได้ใน Settings → OCR | `scripts/translator/fetch-rapidocr.sh` |
-| Google Cloud Vision | cloud | ยังไม่ implement | API key + Vision API |
-| OCR.space | cloud | ยังไม่ implement | ฟรี/คีย์ |
+| Google Cloud Vision | cloud | เพิ่มแล้ว (mock test) | API key + Vision API |
+| OCR.space | cloud | เพิ่มแล้ว (mock test) | ฟรี/คีย์ (`helloworld`) |
 | Gemini Vision | cloud (OCR + แปลรวม) | ยังไม่ implement | API key |
 | Chrome Screen AI | on-device | ยังไม่ implement | Chromium Screen AI |
 
@@ -51,6 +51,7 @@ RapidOCR ใช้ PP-OCRv5 mobile det + `ch_rec.onnx` + `ch_dict.txt`
 
 ## ที่ยังไม่ได้ทำ
 
-- Cloud OCR (Google Vision / OCR.space) และ Gemini Vision แบบส่งภาพ
+- Gemini Vision แบบส่งภาพรวม OCR + แปลในคำขอเดียว
 - Chrome Screen AI
 - ทดสอบ provider จริงด้วย API key บน Steam Deck
+- OCR.space rate-limit (10 ครั้ง/10 นาที) ยังไม่ได้ทำ local throttling

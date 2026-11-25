@@ -62,6 +62,8 @@ if(TARGET translator_core)
 		src/translator/translatormanager.cpp
 		include/translator/cloudbackends.h
 		src/translator/cloudbackends.cpp
+		include/translator/cloudocr.h
+		src/translator/cloudocr.cpp
 	)
 endif()
 set(RESOURCE_FILES "")
@@ -163,6 +165,17 @@ if(CHIAKI_ENABLE_TESTS AND TARGET translator_core)
 		# call the add_test below is ignored and ctest never sees the target.
 		enable_testing()
 		add_test(NAME translator_cloud_tests COMMAND translator_cloud_tests)
+	endif()
+	if(TARGET Qt6::Network AND TARGET Qt6::Gui)
+		add_executable(translator_cloud_ocr_tests
+			tests/translator/TestCloudOcr.cpp
+			include/translator/cloudocr.h
+			src/translator/cloudocr.cpp
+		)
+		target_include_directories(translator_cloud_ocr_tests PRIVATE include)
+		target_link_libraries(translator_cloud_ocr_tests PRIVATE Qt6::Core Qt6::Gui Qt6::Network translator_core)
+		enable_testing()
+		add_test(NAME translator_cloud_ocr_tests COMMAND translator_cloud_ocr_tests)
 	endif()
 endif()
 if(NOT CHIAKI_ENABLE_FFMPEG_DECODER)

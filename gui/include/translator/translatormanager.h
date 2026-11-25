@@ -44,6 +44,7 @@ class TranslatorManager : public QObject
 	Q_PROPERTY(QStringList backendIds READ backendIds CONSTANT)
 	Q_PROPERTY(QString ocrProvider READ ocrProvider WRITE setOcrProvider NOTIFY ocrProviderChanged)
 	Q_PROPERTY(QStringList ocrProviderIds READ ocrProviderIds CONSTANT)
+	Q_PROPERTY(QString ocrApiKey READ ocrApiKey WRITE setOcrApiKey NOTIFY ocrApiKeyChanged)
 	Q_PROPERTY(QString targetLanguage READ targetLanguage WRITE setTargetLanguage NOTIFY targetLanguageChanged)
 	Q_PROPERTY(QVariantMap roiNormalized READ roiNormalized NOTIFY roiChanged)
 	Q_PROPERTY(QVariantList backlog READ backlog NOTIFY backlogChanged)
@@ -69,7 +70,8 @@ public:
 	QString backendId() const { return backend_id_; }
 	QStringList backendIds() const { return QStringList{"gemini", "google", "google-cloud", "deepl", "opencode-go", "openai", "offline"}; }
 	QString ocrProvider() const { return ocr_provider_; }
-	QStringList ocrProviderIds() const { return QStringList{"paddle", "rapidocr"}; }
+	QStringList ocrProviderIds() const { return QStringList{"paddle", "rapidocr", "google-vision", "ocrspace"}; }
+	QString ocrApiKey() const { return ocr_api_key_; }
 	QString targetLanguage() const { return target_language_; }
 	QVariantMap roiNormalized() const;
 	QVariantList backlog() const { return backlog_; }
@@ -86,6 +88,7 @@ public:
 	void setRoiSelectionActive(bool active);
 	void setBackendId(const QString &backend_id);
 	void setOcrProvider(const QString &provider);
+	void setOcrApiKey(const QString &key);
 	void setTargetLanguage(const QString &language);
 
 	// Called from the decoder thread with a frame that is still owned by the
@@ -129,6 +132,7 @@ signals:
 	void statusTextChanged();
 	void backendIdChanged();
 	void ocrProviderChanged();
+	void ocrApiKeyChanged();
 	void targetLanguageChanged();
 	void roiChanged();
 	void backlogChanged();
@@ -179,6 +183,7 @@ private:
 	QString status_text_ = QStringLiteral("Translator idle");
 	QString backend_id_;
 	QString ocr_provider_;
+	QString ocr_api_key_;
 	QString target_language_;
 	QString preprocess_;
 	QString nllb_model_path_;

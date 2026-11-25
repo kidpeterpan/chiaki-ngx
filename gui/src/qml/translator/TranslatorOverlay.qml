@@ -399,9 +399,30 @@ Item {
                 ComboBox {
                     id: ocrBox
                     Layout.fillWidth: true
-                    model: ["PaddleOCR (PP-OCRv3 Japanese)", "RapidOCR (PP-OCRv5)"]
+                    model: ["PaddleOCR (PP-OCRv3 Japanese)", "RapidOCR (PP-OCRv5)", "Google Cloud Vision", "OCR.space"]
                     currentIndex: Math.max(0, Translator.ocrProviderIds.indexOf(Translator.ocrProvider))
                     onActivated: Translator.ocrProvider = Translator.ocrProviderIds[index]
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                visible: Translator.ocrProvider === "google-vision" || Translator.ocrProvider === "ocrspace"
+                Text { text: "OCR key"; color: "#dddddd"; font.pixelSize: 14 }
+                TextField {
+                    id: ocrKeyField
+                    Layout.fillWidth: true
+                    placeholderText: Translator.ocrProvider === "ocrspace" ? "helloworld (free)" : "Google Cloud API key"
+                    echoMode: TextInput.Password
+                    text: Translator.ocrApiKey
+                }
+                Button {
+                    text: "Save"
+                    onClicked: {
+                        Translator.setOcrApiKey(ocrKeyField.text)
+                        Translator.applySettings()
+                    }
                 }
             }
 

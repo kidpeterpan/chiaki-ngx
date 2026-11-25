@@ -25,3 +25,18 @@ future alternative but has an encoder-decoder architecture; the current engine
 implementation targets the CTC PaddleOCR export.
 
 Re-download with `scripts/translator/fetch-assets.sh`.
+
+## RapidOCR PP-OCRv5 (optional, Decky-Translator-compatible)
+
+`scripts/translator/fetch-rapidocr.sh` downloads these into `assets/models/rapidocr/`
+(about 21 MB). Select **RapidOCR (PP-OCRv5)** in the overlay's OCR setting.
+They are not committed to git; `scripts/translator/fetch-assets.sh` fetches them too.
+
+| File | Source | License |
+| --- | --- | --- |
+| `rapidocr/ch_PP-OCRv5_mobile_det.onnx` | PaddleOCR PP-OCRv5 mobile detection (`MeKo-Christian/paddleocr-onnx`) | Apache-2.0 |
+| `rapidocr/ch_rec.onnx` | PaddleOCR PP-OCRv5 mobile recognition (`MeKo-Christian/paddleocr-onnx`) | Apache-2.0 |
+| `rapidocr/ch_dict.txt` | PaddleOCR Chinese/Japanese character dictionary (`monkt/paddleocr-onnx`) | Apache-2.0 |
+
+The PP-OCRv5 `ch` recognition model handles Japanese and mixed CJK/English text.
+It is separate from the default Japanese PP-OCRv3 model and can be selected per session.

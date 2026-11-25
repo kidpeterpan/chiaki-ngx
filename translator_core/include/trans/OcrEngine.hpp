@@ -24,6 +24,13 @@ struct OcrConfig
 	float unclip_ratio = 1.6f;
 	bool try_vertical = true;
 	bool merge_vertical = true;
+	// Cloud OCR options (Google Cloud Vision / OCR.space). On-device engines
+	// ignore these fields.
+	std::string cloud_provider;
+	std::string cloud_api_key;
+	std::string cloud_endpoint;
+	std::string cloud_language = "jpn";
+	int cloud_timeout_ms = 20000;
 };
 
 class OcrEngine

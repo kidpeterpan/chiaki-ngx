@@ -2,6 +2,7 @@
 #include "translator/translatormanager.h"
 
 #include "translator/cloudbackends.h"
+#include "translator/cloudocr.h"
 
 #include <trans/DictLookup.hpp>
 #include <trans/NllbBackend.hpp>
@@ -83,8 +84,9 @@ TranslatorManager::TranslatorManager(QObject *parent) : QObject(parent)
 	overlay_visible_ = settings.value(QStringLiteral("translator/overlay_visible"), true).toBool();
 	backend_id_ = settings.value(QStringLiteral("translator/backend"), QStringLiteral("gemini")).toString();
 	ocr_provider_ = settings.value(QStringLiteral("translator/ocr"), QStringLiteral("paddle")).toString();
-	if (ocr_provider_ != QStringLiteral("rapidocr"))
+	if (!ocrProviderIds().contains(ocr_provider_))
 		ocr_provider_ = QStringLiteral("paddle");
+	ocr_api_key_ = settings.value(QStringLiteral("translator/ocr_api_key")).toString();
 	target_language_ = settings.value(QStringLiteral("translator/target"), QStringLiteral("th")).toString();
 	preprocess_ = settings.value(QStringLiteral("translator/preprocess"), QStringLiteral("contrast")).toString();
 	nllb_model_path_ = settings.value(QStringLiteral("translator/nllb_model"),
@@ -278,6 +280,17 @@ void TranslatorManager::setOcrProvider(const QString &provider)
 		restartPipeline();
 }
 
+void TranslatorManager::setOcrApiKey(const QString &key)
+{
+	if (ocr_api_key_ == key)
+		return;
+	ocr_api_key_ = key;
+	QSettings().setValue(QStringLiteral("translator/ocr_api_key"), ocr_api_key_);
+	emit ocrApiKeyChanged();
+	if (prepared_.load())
+		restartPipeline();
+}
+
 void TranslatorManager::setTargetLanguage(const QString &language)
 {
 	if (target_language_ == language)
@@ -407,12 +420,6 @@ bool TranslatorManager::ensurePipeline(const trans::Rect &roi, QString *error)
 	}
 	if (pipeline_->running())
 		return true;
-	if (!ocr_)
-	{
-		if (error)
-			*error = QStringLiteral("OCR backend not available; rebuild with ONNX Runtime");
-		return false;
-	}
 	if (!backend_)
 	{
 		if (error)
@@ -420,27 +427,43 @@ bool TranslatorManager::ensurePipeline(const trans::Rect &roi, QString *error)
 		return false;
 	}
 
+	const bool cloud_ocr = ocr_provider_ == QStringLiteral("google-vision") ||
+		ocr_provider_ == QStringLiteral("ocrspace");
+	if (cloud_ocr)
+		ocr_ = std::make_shared<CloudOcrEngine>();
+	else if (!ocr_ || std::string(ocr_->name()) != "paddle-onnx")
+		ocr_ = trans::createOnnxOcrEngine();
+	if (!ocr_)
+	{
+		if (error)
+			*error = QStringLiteral("OCR backend not available; rebuild with ONNX Runtime");
+		return false;
+	}
+
 	QString det;
 	QString rec;
 	QString dict;
-	if (ocr_provider_ == QStringLiteral("rapidocr"))
+	if (!cloud_ocr)
 	{
-		det = assetPath(QStringLiteral("models/rapidocr/ch_PP-OCRv5_mobile_det.onnx"));
-		rec = assetPath(QStringLiteral("models/rapidocr/ch_rec.onnx"));
-		dict = assetPath(QStringLiteral("models/rapidocr/ch_dict.txt"));
-	}
-	else
-	{
-		det = assetPath(QStringLiteral("models/ch_PP-OCRv3_det.onnx"));
-		rec = assetPath(QStringLiteral("models/japan_PP-OCRv3_rec.onnx"));
-		dict = assetPath(QStringLiteral("models/japan_dict.txt"));
-	}
-	if (det.isEmpty() || rec.isEmpty() || dict.isEmpty())
-	{
-		if (error)
-			*error = QStringLiteral("OCR model files for %1 not found; run scripts/translator/fetch-assets.sh")
-				.arg(ocr_provider_);
-		return false;
+		if (ocr_provider_ == QStringLiteral("rapidocr"))
+		{
+			det = assetPath(QStringLiteral("models/rapidocr/ch_PP-OCRv5_mobile_det.onnx"));
+			rec = assetPath(QStringLiteral("models/rapidocr/ch_rec.onnx"));
+			dict = assetPath(QStringLiteral("models/rapidocr/ch_dict.txt"));
+		}
+		else
+		{
+			det = assetPath(QStringLiteral("models/ch_PP-OCRv3_det.onnx"));
+			rec = assetPath(QStringLiteral("models/japan_PP-OCRv3_rec.onnx"));
+			dict = assetPath(QStringLiteral("models/japan_dict.txt"));
+		}
+		if (det.isEmpty() || rec.isEmpty() || dict.isEmpty())
+		{
+			if (error)
+				*error = QStringLiteral("OCR model files for %1 not found; run scripts/translator/fetch-assets.sh")
+					.arg(ocr_provider_);
+			return false;
+		}
 	}
 
 	trans::PipelineConfig config;
@@ -452,9 +475,18 @@ bool TranslatorManager::ensurePipeline(const trans::Rect &roi, QString *error)
 	config.frame.pixel_delta_threshold = 14;
 	config.frame.min_stddev = 2.0;
 	config.frame.diff_max_width = 640;
-	config.ocr.detection_model = det.toStdString();
-	config.ocr.recognition_model = rec.toStdString();
-	config.ocr.dictionary = dict.toStdString();
+	if (cloud_ocr)
+	{
+		config.ocr.cloud_provider = ocr_provider_.toStdString();
+		config.ocr.cloud_api_key = ocr_api_key_.toStdString();
+		config.ocr.cloud_language = "jpn";
+	}
+	else
+	{
+		config.ocr.detection_model = det.toStdString();
+		config.ocr.recognition_model = rec.toStdString();
+		config.ocr.dictionary = dict.toStdString();
+	}
 	config.ocr.threads = 2;
 	config.ocr.detection_limit_side = 960;
 	config.ocr.try_vertical = true;
