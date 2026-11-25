@@ -8,6 +8,7 @@ int clampOverlayAutoHideSeconds(int seconds);
 int clampScanIntervalMs(int milliseconds);
 int clampStableMs(int milliseconds);
 int clampOverlayFontSize(int pixels);
+int clampOverlayBoxOpacity(int percent);
 
 // Backend to use when none was ever saved. The keyless Google Translate backend lets
 // a first run work without typing a key; an install that saved a Gemini key under the
