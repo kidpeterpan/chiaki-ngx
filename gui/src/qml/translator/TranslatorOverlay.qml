@@ -78,6 +78,11 @@ Item {
     }
 
     Shortcut {
+        sequence: Translator.shortcutEnable
+        enabled: Translator.shortcutEnable.length > 0
+        onActivated: Translator.toggleEnabled()
+    }
+    Shortcut {
         sequence: Translator.shortcutTranslate
         enabled: Translator.shortcutTranslate.length > 0
         onActivated: Translator.manualTranslate()
@@ -127,6 +132,34 @@ Item {
                 if (root.settingsOpen)
                     Translator.prepare()
             }
+        }
+    }
+
+    // Quick real-time enable/disable. Tapping it starts or stops the pipeline.
+    Rectangle {
+        id: liveBadge
+        anchors.top: gear.bottom
+        anchors.right: parent.right
+        anchors.topMargin: 6
+        anchors.rightMargin: 12
+        width: 58
+        height: 24
+        radius: 12
+        color: Translator.enabled ? "#cc00875a" : "#99000000"
+        border.color: "#66ffffff"
+        border.width: 1
+        visible: Chiaki.session !== null
+
+        Text {
+            anchors.centerIn: parent
+            text: Translator.enabled ? "LIVE" : "OFF"
+            color: "white"
+            font.pixelSize: 11
+            font.bold: true
+        }
+
+        TapHandler {
+            onTapped: Translator.toggleEnabled()
         }
     }
 
@@ -611,6 +644,13 @@ Item {
             RowLayout {
                 width: parent.width
                 spacing: 8
+                Text { text: "Live"; color: "#dddddd"; font.pixelSize: 13 }
+                TextField {
+                    id: shortcutEnableField
+                    Layout.fillWidth: true
+                    placeholderText: "F11"
+                    text: Translator.shortcutEnable
+                }
                 Text { text: "Translate"; color: "#dddddd"; font.pixelSize: 13 }
                 TextField {
                     id: shortcutTranslateField
@@ -618,6 +658,11 @@ Item {
                     placeholderText: "F13"
                     text: Translator.shortcutTranslate
                 }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
                 Text { text: "Overlay"; color: "#dddddd"; font.pixelSize: 13 }
                 TextField {
                     id: shortcutOverlayField
@@ -625,11 +670,6 @@ Item {
                     placeholderText: "F14"
                     text: Translator.shortcutOverlay
                 }
-            }
-
-            RowLayout {
-                width: parent.width
-                spacing: 8
                 Text { text: "Backlog"; color: "#dddddd"; font.pixelSize: 13 }
                 TextField {
                     id: shortcutBacklogField
@@ -637,6 +677,11 @@ Item {
                     placeholderText: "F15"
                     text: Translator.shortcutBacklog
                 }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
                 Text { text: "Settings"; color: "#dddddd"; font.pixelSize: 13 }
                 TextField {
                     id: shortcutSettingsField
@@ -644,6 +689,7 @@ Item {
                     placeholderText: "F12"
                     text: Translator.shortcutSettings
                 }
+                Item { Layout.fillWidth: true }
             }
 
             RowLayout {
@@ -652,9 +698,10 @@ Item {
                 Button {
                     text: "Save hotkeys"
                     onClicked: {
-                        if (Translator.setShortcuts(shortcutTranslateField.text,
-                                shortcutOverlayField.text, shortcutBacklogField.text,
-                                shortcutSettingsField.text)) {
+                        if (Translator.setShortcuts(shortcutEnableField.text,
+                                shortcutTranslateField.text, shortcutOverlayField.text,
+                                shortcutBacklogField.text, shortcutSettingsField.text)) {
+                            shortcutEnableField.text = Translator.shortcutEnable
                             shortcutTranslateField.text = Translator.shortcutTranslate
                             shortcutOverlayField.text = Translator.shortcutOverlay
                             shortcutBacklogField.text = Translator.shortcutBacklog
@@ -666,6 +713,7 @@ Item {
                     text: "Reset hotkeys"
                     onClicked: {
                         Translator.resetShortcuts()
+                        shortcutEnableField.text = Translator.shortcutEnable
                         shortcutTranslateField.text = Translator.shortcutTranslate
                         shortcutOverlayField.text = Translator.shortcutOverlay
                         shortcutBacklogField.text = Translator.shortcutBacklog

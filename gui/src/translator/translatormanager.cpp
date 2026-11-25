@@ -96,6 +96,7 @@ TranslatorManager::TranslatorManager(QObject *parent) : QObject(parent)
 		const QString normalized = translator::normalizeShortcut(stored);
 		return normalized.isEmpty() ? fallback : normalized;
 	};
+	shortcut_enable_ = load_shortcut("translator/shortcut/enable", QStringLiteral("F11"));
 	shortcut_translate_ = load_shortcut("translator/shortcut/translate", QStringLiteral("F13"));
 	shortcut_overlay_ = load_shortcut("translator/shortcut/overlay", QStringLiteral("F14"));
 	shortcut_backlog_ = load_shortcut("translator/shortcut/backlog", QStringLiteral("F15"));
@@ -304,28 +305,29 @@ void TranslatorManager::setOcrApiKey(const QString &key)
 		restartPipeline();
 }
 
-bool TranslatorManager::setShortcuts(const QString &translate, const QString &overlay,
-	const QString &backlog, const QString &settings)
+bool TranslatorManager::setShortcuts(const QString &enable, const QString &translate,
+	const QString &overlay, const QString &backlog, const QString &settings)
 {
-	const QString inputs[4] = {translate, overlay, backlog, settings};
-	const char *keys[4] = {"translator/shortcut/translate", "translator/shortcut/overlay",
-		"translator/shortcut/backlog", "translator/shortcut/settings"};
-	const QStringList values = {translate, overlay, backlog, settings};
+	const QString inputs[5] = {enable, translate, overlay, backlog, settings};
+	const char *keys[5] = {"translator/shortcut/enable", "translator/shortcut/translate",
+		"translator/shortcut/overlay", "translator/shortcut/backlog", "translator/shortcut/settings"};
+	const QStringList values = {enable, translate, overlay, backlog, settings};
 	const QString problem = translator::shortcutSetError(values);
 	if (!problem.isEmpty())
 	{
 		setStatus(problem);
 		return false;
 	}
-	QString normalized[4];
-	for (int index = 0; index < 4; ++index)
+	QString normalized[5];
+	for (int index = 0; index < 5; ++index)
 		normalized[index] = translator::normalizeShortcut(inputs[index]);
-	shortcut_translate_ = normalized[0];
-	shortcut_overlay_ = normalized[1];
-	shortcut_backlog_ = normalized[2];
-	shortcut_settings_ = normalized[3];
+	shortcut_enable_ = normalized[0];
+	shortcut_translate_ = normalized[1];
+	shortcut_overlay_ = normalized[2];
+	shortcut_backlog_ = normalized[3];
+	shortcut_settings_ = normalized[4];
 	QSettings settings_store;
-	for (int index = 0; index < 4; ++index)
+	for (int index = 0; index < 5; ++index)
 		settings_store.setValue(QString::fromLatin1(keys[index]), normalized[index]);
 	emit shortcutsChanged();
 	setStatus(QStringLiteral("Hotkeys saved"));
@@ -334,7 +336,13 @@ bool TranslatorManager::setShortcuts(const QString &translate, const QString &ov
 
 void TranslatorManager::resetShortcuts()
 {
-	setShortcuts(QStringLiteral("F13"), QStringLiteral("F14"), QStringLiteral("F15"), QStringLiteral("F12"));
+	setShortcuts(QStringLiteral("F11"), QStringLiteral("F13"), QStringLiteral("F14"),
+		QStringLiteral("F15"), QStringLiteral("F12"));
+}
+
+void TranslatorManager::toggleEnabled()
+{
+	setEnabled(!enabled_.load());
 }
 
 void TranslatorManager::showSettings()

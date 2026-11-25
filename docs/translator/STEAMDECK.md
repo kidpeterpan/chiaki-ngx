@@ -66,11 +66,12 @@ scripts/translator/build-appimage.sh
 แก้ได้ในแผง translator → หัวข้อ **Hotkeys**:
 
 - รองรับปุ่มเดี่ยว (`F13`) และ combination (`Ctrl+Shift+T`)
+- มีปุ่ม **Live** ใน Chiaki stream menu และ badge LIVE/OFF ใต้มุมขวาบนสำหรับเปิด/ปิด real-time translation ทันที
 - เว้นว่าง = ปิด shortcut นั้น
 - ตรวจ conflict ระหว่าง 4 actions: Translate, Overlay, Backlog, Settings
 - บันทึกใน QSettings
 
-ค่าเริ่มต้น: `F13` แปล, `F14` ซ่อน/แสดง, `F15` backlog, `F12` เปิด settings
+ค่าเริ่มต้น: `F11` เปิด/ปิด real-time, `F13` แปล, `F14` ซ่อน/แสดง, `F15` backlog, `F12` เปิด settings
 
 ## ใช้งาน
 

@@ -106,8 +106,25 @@ Window {
                     else
                         streamMenuWindow.mainViewRequested();
                 }
-                KeyNavigation.right: translatorMenuButton
+                KeyNavigation.right: liveButton
                 Keys.onReturnPressed: clicked()
+                Keys.onEscapePressed: streamMenuWindow.closeRequested()
+            }
+
+            ToolButton {
+                id: liveButton
+                Layout.rightMargin: 10
+                text: "Live"
+                padding: 10
+                font.pixelSize: 15
+                down: activeFocus
+                activeFocusOnTab: true
+                checkable: true
+                checked: Translator.enabled
+                onToggled: Translator.enabled = checked
+                KeyNavigation.left: closeButton
+                KeyNavigation.right: translatorMenuButton
+                Keys.onReturnPressed: toggled()
                 Keys.onEscapePressed: streamMenuWindow.closeRequested()
             }
 
@@ -123,7 +140,7 @@ Window {
                     streamMenuWindow.translatorSettingsRequested();
                     streamMenuWindow.closeRequested();
                 }
-                KeyNavigation.left: closeButton
+                KeyNavigation.left: liveButton
                 KeyNavigation.right: volumeSlider
                 Keys.onReturnPressed: clicked()
                 Keys.onEscapePressed: streamMenuWindow.closeRequested()

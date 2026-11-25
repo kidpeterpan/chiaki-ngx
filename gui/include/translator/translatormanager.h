@@ -45,6 +45,7 @@ class TranslatorManager : public QObject
 	Q_PROPERTY(QString ocrProvider READ ocrProvider WRITE setOcrProvider NOTIFY ocrProviderChanged)
 	Q_PROPERTY(QStringList ocrProviderIds READ ocrProviderIds CONSTANT)
 	Q_PROPERTY(QString ocrApiKey READ ocrApiKey WRITE setOcrApiKey NOTIFY ocrApiKeyChanged)
+	Q_PROPERTY(QString shortcutEnable READ shortcutEnable NOTIFY shortcutsChanged)
 	Q_PROPERTY(QString shortcutTranslate READ shortcutTranslate NOTIFY shortcutsChanged)
 	Q_PROPERTY(QString shortcutOverlay READ shortcutOverlay NOTIFY shortcutsChanged)
 	Q_PROPERTY(QString shortcutBacklog READ shortcutBacklog NOTIFY shortcutsChanged)
@@ -76,6 +77,7 @@ public:
 	QString ocrProvider() const { return ocr_provider_; }
 	QStringList ocrProviderIds() const { return QStringList{"paddle", "rapidocr", "google-vision", "gemini-vision", "ocrspace", "chromescreenai"}; }
 	QString ocrApiKey() const { return ocr_api_key_; }
+	QString shortcutEnable() const { return shortcut_enable_; }
 	QString shortcutTranslate() const { return shortcut_translate_; }
 	QString shortcutOverlay() const { return shortcut_overlay_; }
 	QString shortcutBacklog() const { return shortcut_backlog_; }
@@ -97,8 +99,9 @@ public:
 	void setBackendId(const QString &backend_id);
 	void setOcrProvider(const QString &provider);
 	void setOcrApiKey(const QString &key);
-	Q_INVOKABLE bool setShortcuts(const QString &translate, const QString &overlay,
-		const QString &backlog, const QString &settings);
+	Q_INVOKABLE bool setShortcuts(const QString &enable, const QString &translate,
+		const QString &overlay, const QString &backlog, const QString &settings);
+	Q_INVOKABLE void toggleEnabled();
 	Q_INVOKABLE void resetShortcuts();
 	Q_INVOKABLE void showSettings();
 	void setTargetLanguage(const QString &language);
@@ -198,6 +201,7 @@ private:
 	QString backend_id_;
 	QString ocr_provider_;
 	QString ocr_api_key_;
+	QString shortcut_enable_;
 	QString shortcut_translate_;
 	QString shortcut_overlay_;
 	QString shortcut_backlog_;
