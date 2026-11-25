@@ -247,6 +247,102 @@ std::vector<trans::OcrLine> ParseVisualAnnotation(const void *data, size_t lengt
 	return lines;
 }
 
+// Chrome Screen AI aborts the process (CHECK "!pipeline_" in ocr.cc) when
+// InitOCRUsingCallback runs a second time, and dlclose does not reset that state. Every
+// pipeline restart builds a new engine, so the library is loaded and initialized once per
+// process, kept until exit, and shared by every ScreenAiEngine.
+struct SharedScreenAi
+{
+	void *handle = nullptr;
+	PerformOcrFn perform = nullptr;
+	FreeCharArrayFn free_chars = nullptr;
+	unsigned max_dimension = 2048;
+	std::string model_dir;
+	bool initialized = false;
+	// Set once InitOCRUsingCallback was called and failed: calling it again would abort.
+	std::string init_error;
+};
+
+std::mutex g_shared_mutex;
+SharedScreenAi g_shared;
+
+const SharedScreenAi *AcquireScreenAi(const std::string &model_dir, std::string *error)
+{
+	std::lock_guard<std::mutex> lock(g_shared_mutex);
+	if (g_shared.initialized)
+	{
+		if (model_dir == g_shared.model_dir)
+			return &g_shared;
+		if (error)
+			*error = "Chrome Screen AI is already loaded from " + g_shared.model_dir +
+				"; restart chiaki-ngx to load it from another folder";
+		return nullptr;
+	}
+	if (!g_shared.init_error.empty())
+	{
+		if (error)
+			*error = g_shared.init_error;
+		return nullptr;
+	}
+
+	// Failures before InitOCRUsingCallback leave nothing behind, so a later load may retry.
+	const std::string library_path = model_dir + "/libchromescreenai.so";
+	if (!std::ifstream(library_path).good())
+	{
+		if (error)
+			*error = "Chrome Screen AI assets are missing; run scripts/translator/fetch-screenai.sh";
+		return nullptr;
+	}
+	void *handle = dlopen(library_path.c_str(), RTLD_LAZY | RTLD_LOCAL);
+	if (!handle)
+	{
+		if (error)
+			*error = std::string("Cannot load libchromescreenai.so: ") + dlerror();
+		return nullptr;
+	}
+	auto resolve = [handle](const char *symbol) -> void * {
+		return dlsym(handle, symbol);
+	};
+	auto set_functions = reinterpret_cast<SetFileContentFunctionsFn>(resolve("SetFileContentFunctions"));
+	auto init = reinterpret_cast<InitOcrFn>(resolve("InitOCRUsingCallback"));
+	auto set_light = reinterpret_cast<SetLightModeFn>(resolve("SetOCRLightMode"));
+	auto perform = reinterpret_cast<PerformOcrFn>(resolve("PerformOCR"));
+	auto free_chars = reinterpret_cast<FreeCharArrayFn>(resolve("FreeLibraryAllocatedCharArray"));
+	auto max_dim = reinterpret_cast<MaxDimensionFn>(resolve("GetMaxImageDimension"));
+	if (!set_functions || !init || !set_light || !perform || !free_chars || !max_dim)
+	{
+		dlclose(handle);
+		if (error)
+			*error = "libchromescreenai.so is missing required symbols";
+		return nullptr;
+	}
+
+	{
+		std::lock_guard<std::mutex> model_lock(g_model_dir_mutex);
+		g_model_dir = model_dir;
+	}
+	set_functions(reinterpret_cast<void *>(FileSizeCallback),
+		reinterpret_cast<void *>(FileContentCallback));
+	if (!init())
+	{
+		// The library stays loaded: its state is unknown, and a second init would abort.
+		g_shared.init_error = "Chrome Screen AI InitOCRUsingCallback failed; restart chiaki-ngx to try again";
+		if (error)
+			*error = g_shared.init_error;
+		return nullptr;
+	}
+	set_light(false);
+	g_shared.handle = handle;
+	g_shared.perform = perform;
+	g_shared.free_chars = free_chars;
+	g_shared.max_dimension = max_dim();
+	if (g_shared.max_dimension == 0)
+		g_shared.max_dimension = 2048;
+	g_shared.model_dir = model_dir;
+	g_shared.initialized = true;
+	return &g_shared;
+}
+
 #endif
 
 } // namespace
@@ -256,15 +352,12 @@ ScreenAiEngine::~ScreenAiEngine()
 	unload();
 }
 
+// The shared library is never closed (see SharedScreenAi); this only detaches the engine.
 void ScreenAiEngine::unload()
 {
-#if defined(Q_OS_LINUX)
-	if (library_)
-	{
-		dlclose(library_);
-		library_ = nullptr;
-	}
-#endif
+	library_ = nullptr;
+	perform_ = nullptr;
+	free_ = nullptr;
 	ready_ = false;
 }
 
@@ -284,59 +377,16 @@ bool ScreenAiEngine::load(const trans::OcrConfig &config, std::string *error)
 			*error = "Chrome Screen AI model directory is not configured";
 		return false;
 	}
-	const std::string library_path = model_dir_ + "/libchromescreenai.so";
-	if (!std::ifstream(library_path).good())
-	{
-		if (error)
-			*error = "Chrome Screen AI assets are missing; run scripts/translator/fetch-screenai.sh";
+	const SharedScreenAi *shared = AcquireScreenAi(model_dir_, error);
+	if (!shared)
 		return false;
-	}
-
-	void *handle = dlopen(library_path.c_str(), RTLD_LAZY | RTLD_LOCAL);
-	if (!handle)
-	{
-		if (error)
-			*error = std::string("Cannot load libchromescreenai.so: ") + dlerror();
-		return false;
-	}
-	auto resolve = [handle](const char *symbol) -> void * {
-		return dlsym(handle, symbol);
-	};
-	auto set_functions = reinterpret_cast<SetFileContentFunctionsFn>(resolve("SetFileContentFunctions"));
-	auto init = reinterpret_cast<InitOcrFn>(resolve("InitOCRUsingCallback"));
-	auto set_light = reinterpret_cast<SetLightModeFn>(resolve("SetOCRLightMode"));
-	auto perform = reinterpret_cast<PerformOcrFn>(resolve("PerformOCR"));
-	auto free_chars = reinterpret_cast<FreeCharArrayFn>(resolve("FreeLibraryAllocatedCharArray"));
-	auto max_dim = reinterpret_cast<MaxDimensionFn>(resolve("GetMaxImageDimension"));
-	if (!set_functions || !init || !set_light || !perform || !free_chars || !max_dim)
-	{
-		dlclose(handle);
-		if (error)
-			*error = "libchromescreenai.so is missing required symbols";
-		return false;
-	}
-
-	{
-		std::lock_guard<std::mutex> lock(g_model_dir_mutex);
-		g_model_dir = model_dir_;
-	}
-	set_functions(reinterpret_cast<void *>(FileSizeCallback),
-		reinterpret_cast<void *>(FileContentCallback));
-	if (!init())
-	{
-		dlclose(handle);
-		if (error)
-			*error = "Chrome Screen AI InitOCRUsingCallback failed";
-		return false;
-	}
-	set_light(false);
-	max_dimension_ = max_dim();
-	if (max_dimension_ == 0)
-		max_dimension_ = 2048;
-	library_ = handle;
-	perform_ = reinterpret_cast<void *>(perform);
-	free_ = reinterpret_cast<void *>(free_chars);
+	library_ = shared->handle;
+	perform_ = reinterpret_cast<void *>(shared->perform);
+	free_ = reinterpret_cast<void *>(shared->free_chars);
+	max_dimension_ = shared->max_dimension;
 	ready_ = true;
+	if (error)
+		error->clear();
 	return true;
 #endif
 }

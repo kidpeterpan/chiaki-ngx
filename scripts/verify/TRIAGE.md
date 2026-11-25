@@ -46,6 +46,22 @@ builds. **medium** = a gap in coverage or reproducibility. **low** = noise.
   HIGH). The build never installs them; the exception is proposed in
   `scripts/verify/audit-exceptions.txt` for the repo owner's review.
 
+### T17. Chrome Screen AI aborted the app on any pipeline restart (resolved 2026-11-25)
+
+- Symptom (Steam Deck): with OCR set to Chrome Screen AI, closing the translator settings,
+  turning the translator off and on, or switching OCR away and back closed the app.
+- Cause: every pipeline restart built a new `ScreenAiEngine`, which called
+  `InitOCRUsingCallback` again. libchromescreenai.so aborts on a second initialization
+  (`ocr.cc:539] Check failed: !pipeline_`, SIGABRT), and `dlclose` does not reset it.
+  Reproduced on x86_64 Linux with the real library.
+- Fix: `gui/src/translator/screenai.cpp` loads and initializes the library once per process
+  and never closes it; engines share it.
+- Test: `translator_screenai_restart_tests` (five restarts, then switch away and back, each
+  step must read the fixture text). Registered on Linux once
+  `scripts/translator/fetch-screenai.sh` has fetched the library, so `test-gui` runs it there.
+  It aborts on the previous code. Not run on macOS or in CI, which have no x86_64 Linux job
+  with the library.
+
 ## High
 
 ### T3. Bundled curl needs OpenSSL 3, while one source file needs OpenSSL 4 symbols
