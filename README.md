@@ -27,7 +27,7 @@ optional, in-viewport Japanese subtitle translator for Steam Deck and desktop pl
 | Overlay | Box-accurate multi-block in-place overlay, bottom fallback, configurable auto-hide, font family and size |
 | Timing | Configurable scan interval and text-stability delay |
 | Controls | Steam Deck L4/R4/L5/R5, touch routing, live enable/disable, remappable hotkeys with key capture |
-| Packaging | Linux AppImage, macOS arm64 DMG, and upstream Flatpak/Windows build paths |
+| Packaging | Linux AppImage and upstream Flatpak/Windows build paths |
 | Quality | 68 translator-core tests, overlay geometry/preference/shortcut tests, cloud/OCR mock tests, QML smoke checks, and `scripts/verify.sh --full` |
 
 The translator is opt-in and disabled by default. Without it, chiaki-ngx behaves like the
@@ -60,8 +60,9 @@ cmake --build build --target chiaki
 
 ## Releases
 
-Download the verified macOS DMG and Steam Deck AppImage from
-[GitHub Releases](https://github.com/kidpeterpan/chiaki-ngx/releases).
+Download the verified Steam Deck AppImage from
+[GitHub Releases](https://github.com/kidpeterpan/chiaki-ngx/releases). macOS DMG builds are no
+longer published; build from source with the [macOS guide](docs/translator/MACOS.md).
 
 ## Credits and license
 
