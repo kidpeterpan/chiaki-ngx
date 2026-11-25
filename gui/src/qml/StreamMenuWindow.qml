@@ -13,6 +13,7 @@ Window {
     property bool closing: false
 
     signal closeRequested()
+    signal translatorSettingsRequested()
     signal displaySettingsRequested()
     signal placeboSettingsRequested()
     signal mainViewRequested()

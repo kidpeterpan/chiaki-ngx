@@ -30,14 +30,21 @@ download "https://huggingface.co/cycloneboy/japan_PP-OCRv3_rec_infer/resolve/mai
 	"$MODELS/japan_dict.txt"
 
 JMdict="/tmp/JMdict_e.gz"
-if ! download "https://www.edrdg.org/pub/Nihongo/JMdict_e.gz" "$JMdict"; then
-	echo "HTTPS download failed; trying the edrdg FTP-over-HTTP mirror" >&2
-	rm -f "${JMdict}.part"
-	download "http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz" "$JMdict"
+if [[ ! -s "$DICT/jmdict.db" ]]; then
+	if ! download "https://www.edrdg.org/pub/Nihongo/JMdict_e.gz" "$JMdict"; then
+		echo "HTTPS download failed; trying the edrdg FTP-over-HTTP mirror" >&2
+		rm -f "${JMdict}.part"
+		if ! download "http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz" "$JMdict"; then
+			echo "edrdg unavailable; using the pinned prebuilt JMdict database" >&2
+			download "https://github.com/kidpeterpan/chiaki-ngx/releases/download/translator-assets/jmdict.db" \
+				"$DICT/jmdict.db"
+		fi
+	fi
 fi
-
-echo "building $DICT/jmdict.db (about 83 MB) ..."
-python3 "$ROOT/translator_core/tools/build_jmdict.py" --input "$JMdict" --output "$DICT/jmdict.db"
+if [[ ! -s "$DICT/jmdict.db" ]]; then
+	echo "building $DICT/jmdict.db (about 83 MB) ..."
+	python3 "$ROOT/translator_core/tools/build_jmdict.py" --input "$JMdict" --output "$DICT/jmdict.db"
+fi
 
 # Optional Chrome Screen AI provider (Linux x86_64 only, about 123 MB).
 if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" && "${TRANS_FETCH_SCREENAI:-1}" != "0" ]]; then
