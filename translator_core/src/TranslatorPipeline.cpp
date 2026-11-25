@@ -261,9 +261,13 @@ void TranslatorPipeline::handleFrame(const std::shared_ptr<PipelineShared> &shar
 	if (result.stable || result.unsettled_ms == 0)
 		fallback.settle();
 	const bool fallback_read = !result.stable && !manual;
-	if (fallback_read && !fallbackDue(shared, result, frame.now_ms))
-		return;
 	if (result.stddev < shared->config.frame.min_stddev)
+	{
+		if (!manual)
+			fallback.shown.clear();
+		return;
+	}
+	if (fallback_read && !fallbackDue(shared, result, frame.now_ms))
 		return;
 	if (fallback_read)
 	{
@@ -314,43 +318,63 @@ void TranslatorPipeline::handleFrame(const std::shared_ptr<PipelineShared> &shar
 		return;
 	}
 	const std::vector<OcrBlock> blocks = lines.empty() ? std::vector<OcrBlock>{} : groupOcrLines(lines);
-	if (blocks.empty())
+	std::vector<OcrBlock> dialogue;
+	for (const OcrBlock &block : blocks)
 	{
+		if (isTranslatableText(block.text))
+			dialogue.push_back(block);
+	}
+	if (dialogue.empty())
+	{
+		// The box closed or only scene noise is left: a line that comes back is new again.
+		if (!manual)
+			fallback.shown.clear();
 		if (fallback_read)
 		{
 			++fallback.empty_reads;
 			fallback.previous_read.clear();
 		}
 		if (shared->callbacks.onState)
-			shared->callbacks.onState("no-text");
+			shared->callbacks.onState(blocks.empty() ? "no-text" : "noise");
 		return;
 	}
 
 	std::vector<std::string> read_texts;
-	for (const OcrBlock &block : blocks)
+	for (const OcrBlock &block : dialogue)
 		read_texts.push_back(block.text);
 	std::vector<std::string> confirmed_by;
 	if (fallback_read)
 	{
-		fallback.empty_reads = 0;
 		confirmed_by = std::move(fallback.previous_read);
 		fallback.previous_read = read_texts;
 	}
-	bool delivering_any = false;
+	// Lines of this read that are on screen as translations once it is handled.
+	std::vector<std::string> on_screen;
+	bool delivered_new = false;
+	bool awaiting_confirmation = false;
 
 	const std::string &target_language = shared->config.prompt.target_language;
 	const uint64_t batch_id = static_cast<uint64_t>(frame.now_ms);
-	bool translated_any = false;
 
-	for (const OcrBlock &block : blocks)
+	for (const OcrBlock &block : dialogue)
 	{
 		const std::string text = block.text;
-		if (!isTranslatableText(text))
+		// An automatic read never shows again a line that is still on screen, even after the
+		// duplicate filter has forgotten it.
+		if (!manual && SimilarToAny(text, fallback.shown))
+		{
+			on_screen.push_back(text);
+			if (!fallback_read)
+				shared->duplicates.fetch_add(1);
 			continue;
-		translated_any = true;
-		if (fallback_read && (!SimilarToAny(text, confirmed_by) || SimilarToAny(text, fallback.shown)))
+		}
+		if (fallback_read && !SimilarToAny(text, confirmed_by))
+		{
+			awaiting_confirmation = true;
 			continue;
-		delivering_any = true;
+		}
+		on_screen.push_back(text);
+		delivered_new = true;
 
 		if (shared->callbacks.onOcr)
 			shared->callbacks.onOcr(text, block.confidence);
@@ -422,10 +446,12 @@ void TranslatorPipeline::handleFrame(const std::shared_ptr<PipelineShared> &shar
 		}
 	}
 
-	if (delivering_any && !manual)
-		fallback.shown = read_texts;
-	if (!translated_any && shared->callbacks.onState)
-		shared->callbacks.onState("noise");
+	if (!manual)
+		fallback.shown = std::move(on_screen);
+	// A read that brings nothing new counts toward the slower interval, so a line left on screen
+	// over a moving scene is not re-read every 1.5 s.
+	if (fallback_read)
+		fallback.empty_reads = delivered_new || awaiting_confirmation ? 0 : fallback.empty_reads + 1;
 }
 
 bool TranslatorPipeline::fallbackDue(const std::shared_ptr<PipelineShared> &shared,

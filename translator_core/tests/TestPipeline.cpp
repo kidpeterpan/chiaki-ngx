@@ -52,9 +52,11 @@ public:
 
 	std::vector<OcrLine> recognize(const Image &image, std::string *error) override
 	{
-		++calls;
+		const int call = ++calls;
 		if (error)
 			error->clear();
+		if (!script.empty())
+			return script[static_cast<size_t>(std::min<int>(call, static_cast<int>(script.size())) - 1)];
 		if (!multiple_lines.empty())
 			return multiple_lines;
 		if (text.empty())
@@ -74,6 +76,8 @@ public:
 	std::string translated;
 	float confidence = 0.94f;
 	std::vector<OcrLine> multiple_lines;
+	// One result per call; the last one repeats.
+	std::vector<std::vector<OcrLine>> script;
 	std::atomic<int> calls{0};
 };
 
@@ -180,6 +184,28 @@ void FeedMoving(TranslatorPipeline &pipeline, int64_t from_ms, int64_t to_ms)
 	{
 		const uint64_t before = pipeline.stats().samples;
 		pipeline.submitImage(MakeMovingImage(64, 32, static_cast<int>(now / 100)), now);
+		for (int wait = 0; wait < 500 && pipeline.stats().samples == before; ++wait)
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+OcrLine Line(const std::string &text, int x)
+{
+	OcrLine line;
+	line.text = text;
+	line.confidence = 0.9f;
+	line.box = Rect{x, 10, 100, 30};
+	return line;
+}
+
+// Submits the same still image every 100 ms from `from_ms` up to `to_ms`.
+void FeedStill(TranslatorPipeline &pipeline, const Image &image, int64_t from_ms, int64_t to_ms)
+{
+	for (int64_t now = from_ms; now < to_ms; now += 100)
+	{
+		const uint64_t before = pipeline.stats().samples;
+		pipeline.submitImage(image, now);
 		for (int wait = 0; wait < 500 && pipeline.stats().samples == before; ++wait)
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
@@ -554,5 +580,114 @@ TEST(pipeline_fallback_does_not_reshow_a_line_past_the_ttl)
 
 	ASSERT_EQ(collector->itemCount(), static_cast<size_t>(1));
 	ASSERT_TRUE(pipeline.stats().ocr_runs >= 4);
+	pipeline.stop();
+}
+
+// A name plate is confirmed and delivered on the same read that first sees the finished line;
+// the line must still be delivered once the next read confirms it.
+TEST(pipeline_fallback_delivers_a_block_first_seen_on_a_delivering_read)
+{
+	auto ocr = std::make_shared<FakeOcrEngine>();
+	const std::string name = "アリス";
+	const std::string full = "今日はとてもいい天気ですね、散歩に行きましょう";
+	ocr->script = {
+		{Line(name, 10), Line("今日は", 300)},
+		{Line(name, 10), Line(full, 300)},
+		{Line(name, 10), Line(full, 300)},
+	};
+	auto backend = std::make_shared<FakeBackend>();
+	auto collector = std::make_shared<Collector>();
+
+	TranslatorPipeline pipeline;
+	std::string error;
+	ASSERT_TRUE(pipeline.start(MakeConfig(), ocr, backend, MakeCallbacks(collector), &error));
+	FeedMoving(pipeline, 0, 6000);
+
+	ASSERT_EQ(collector->itemCount(), static_cast<size_t>(2));
+	ASSERT_EQ(collector->items[1].source_text, full);
+	pipeline.stop();
+}
+
+// Reads that find only non-dialogue text (scene noise) back off like empty reads.
+TEST(pipeline_fallback_backs_off_on_noise_reads)
+{
+	auto ocr = std::make_shared<FakeOcrEngine>();
+	ocr->text = "1 2 3";
+	auto backend = std::make_shared<FakeBackend>();
+	auto collector = std::make_shared<Collector>();
+
+	TranslatorPipeline pipeline;
+	std::string error;
+	ASSERT_TRUE(pipeline.start(MakeConfig(), ocr, backend, MakeCallbacks(collector), &error));
+	FeedMoving(pipeline, 0, 9000);
+
+	ASSERT_EQ(collector->itemCount(), static_cast<size_t>(0));
+	ASSERT_EQ(pipeline.stats().ocr_runs, static_cast<uint64_t>(3));
+	pipeline.stop();
+}
+
+// Once its line is on screen, the fallback slows down instead of re-reading it every 1.5 s.
+TEST(pipeline_fallback_backs_off_once_the_line_is_shown)
+{
+	auto ocr = std::make_shared<FakeOcrEngine>();
+	auto backend = std::make_shared<FakeBackend>();
+	auto collector = std::make_shared<Collector>();
+
+	TranslatorPipeline pipeline;
+	std::string error;
+	ASSERT_TRUE(pipeline.start(MakeConfig(), ocr, backend, MakeCallbacks(collector), &error));
+	FeedMoving(pipeline, 0, 15000);
+
+	// 1500 read, 3000 deliver, 4500/6000/7500 already shown, then every 5 s: 12500.
+	ASSERT_EQ(collector->itemCount(), static_cast<size_t>(1));
+	ASSERT_EQ(pipeline.stats().ocr_runs, static_cast<uint64_t>(6));
+	pipeline.stop();
+}
+
+// A line read again by the stable path after the duplicate TTL (something crossed the text)
+// is not shown again.
+TEST(pipeline_stable_path_does_not_reshow_a_line_past_the_ttl)
+{
+	auto ocr = std::make_shared<FakeOcrEngine>();
+	auto backend = std::make_shared<FakeBackend>();
+	auto collector = std::make_shared<Collector>();
+
+	PipelineConfig config = MakeConfig();
+	config.dedup_ttl_ms = 1000;
+	TranslatorPipeline pipeline;
+	std::string error;
+	ASSERT_TRUE(pipeline.start(config, ocr, backend, MakeCallbacks(collector), &error));
+	const Image line = MakeImage(64, 32, 200, 3);
+	FeedStill(pipeline, line, 0, 500);
+	ASSERT_TRUE(collector->waitForItems(1));
+	FeedStill(pipeline, MakeImage(64, 32, 200, 4), 2000, 2100);
+	FeedStill(pipeline, line, 2100, 2600);
+
+	ASSERT_TRUE(pipeline.stats().ocr_runs >= 2);
+	ASSERT_EQ(collector->itemCount(), static_cast<size_t>(1));
+	pipeline.stop();
+}
+
+// After the box closes (a read with no text), the same line coming back is shown again.
+TEST(pipeline_line_is_shown_again_after_the_box_closes)
+{
+	auto ocr = std::make_shared<FakeOcrEngine>();
+	auto backend = std::make_shared<FakeBackend>();
+	auto collector = std::make_shared<Collector>();
+
+	PipelineConfig config = MakeConfig();
+	config.dedup_ttl_ms = 1000;
+	TranslatorPipeline pipeline;
+	std::string error;
+	ASSERT_TRUE(pipeline.start(config, ocr, backend, MakeCallbacks(collector), &error));
+	const Image line = MakeImage(64, 32, 200, 3);
+	FeedStill(pipeline, line, 0, 500);
+	ASSERT_TRUE(collector->waitForItems(1));
+	ocr->text.clear();
+	FeedStill(pipeline, MakeImage(64, 32, 200, 6), 1000, 1500);
+	ocr->text = "こんにちは";
+	FeedStill(pipeline, line, 3000, 3500);
+
+	ASSERT_EQ(collector->itemCount(), static_cast<size_t>(2));
 	pipeline.stop();
 }
