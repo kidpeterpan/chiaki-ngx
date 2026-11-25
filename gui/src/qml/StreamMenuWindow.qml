@@ -121,8 +121,8 @@ Window {
                 down: activeFocus
                 activeFocusOnTab: true
                 checkable: true
-                checked: Translator.enabled
-                onToggled: Translator.enabled = checked
+                checked: Translator.enabled && Translator.liveTranslation
+                onToggled: Translator.toggleLive()
                 KeyNavigation.left: closeButton
                 KeyNavigation.right: translatorMenuButton
                 Keys.onReturnPressed: toggled()

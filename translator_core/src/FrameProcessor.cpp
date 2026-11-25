@@ -110,6 +110,61 @@ void ensureSize(GrayscaleFrame &image, int width, int height)
 	}
 }
 
+// Text-like pixels: the extreme-brightness side opposite the area's median, so light text on a
+// dark box and dark text on a light box both work.
+std::vector<uint8_t> textMask(const GrayscaleFrame &frame, int bright_threshold, int dark_threshold)
+{
+	uint64_t histogram[256] = {0};
+	for (int y = 0; y < frame.height; ++y)
+	{
+		const uint8_t *row = frame.pixels.data() + static_cast<size_t>(y) * frame.stride;
+		for (int x = 0; x < frame.width; ++x)
+			++histogram[row[x]];
+	}
+	const uint64_t half = static_cast<uint64_t>(frame.width) * frame.height / 2;
+	int median = 0;
+	for (uint64_t cumulative = 0; median < 255; ++median)
+	{
+		cumulative += histogram[median];
+		if (cumulative > half)
+			break;
+	}
+	const bool bright_text = median < 128;
+
+	std::vector<uint8_t> mask(static_cast<size_t>(frame.width) * frame.height);
+	for (int y = 0; y < frame.height; ++y)
+	{
+		const uint8_t *row = frame.pixels.data() + static_cast<size_t>(y) * frame.stride;
+		uint8_t *out = mask.data() + static_cast<size_t>(y) * frame.width;
+		for (int x = 0; x < frame.width; ++x)
+			out[x] = bright_text ? row[x] >= bright_threshold : row[x] <= dark_threshold;
+	}
+	return mask;
+}
+
+struct MaskComparison
+{
+	double flip_ratio = 1.0;
+	bool empty = false;
+};
+
+MaskComparison compareMasks(const std::vector<uint8_t> &before, const std::vector<uint8_t> &after)
+{
+	MaskComparison comparison;
+	if (before.size() != after.size())
+		return comparison;
+	uint64_t flipped = 0;
+	uint64_t either = 0;
+	for (size_t i = 0; i < before.size(); ++i)
+	{
+		flipped += before[i] != after[i];
+		either += before[i] | after[i];
+	}
+	comparison.empty = either == 0;
+	comparison.flip_ratio = static_cast<double>(flipped) / static_cast<double>(std::max<uint64_t>(1, either));
+	return comparison;
+}
+
 } // namespace
 
 bool extractRgb(const FrameView &frame, const Rect &roi, Image &out, ColorMatrix matrix)
@@ -448,8 +503,10 @@ FrameProcessor::FrameProcessor(FrameProcessorConfig config) : config_(config) {}
 void FrameProcessor::reset()
 {
 	last_gray_.clear();
+	last_text_mask_.clear();
 	last_sample_ms_ = -1;
 	still_ms_ = 0;
+	unsettled_ms_ = 0;
 	generation_ = 0;
 	emitted_generation_ = 0;
 	initialized_ = false;
@@ -495,6 +552,7 @@ ProcessResult FrameProcessor::evaluate(const GrayscaleFrame &gray, int64_t delta
 	GrayscaleFrame diff_frame = config_.diff_max_width > 0 && gray.width > config_.diff_max_width
 		? resizeGray(gray, config_.diff_max_width)
 		: gray;
+	std::vector<uint8_t> text_mask = textMask(diff_frame, config_.text_bright_threshold, config_.text_dark_threshold);
 
 	if (!initialized_)
 	{
@@ -503,6 +561,7 @@ ProcessResult FrameProcessor::evaluate(const GrayscaleFrame &gray, int64_t delta
 		result.generation = generation_;
 		result.changed_ratio = 1.0;
 		last_gray_ = std::move(diff_frame);
+		last_text_mask_ = std::move(text_mask);
 		return result;
 	}
 
@@ -511,8 +570,18 @@ ProcessResult FrameProcessor::evaluate(const GrayscaleFrame &gray, int64_t delta
 	result.mean_abs_delta = stats.mean_abs_delta;
 	result.structure_similarity = stats.structure_similarity;
 
-	const bool content_changed = stats.changed_ratio > config_.still_changed_ratio ||
+	const bool area_changed = stats.changed_ratio > config_.still_changed_ratio ||
 		stats.mean_abs_delta > config_.still_mean_abs_delta;
+	unsettled_ms_ = area_changed ? unsettled_ms_ + delta_ms : 0;
+	result.unsettled_ms = unsettled_ms_;
+
+	// Text pixels are compared with the mask at the start of the current still period, so a line
+	// typed out one character at a time keeps adding up until it counts as a change.
+	const MaskComparison text = compareMasks(last_text_mask_, text_mask);
+	result.text_flip_ratio = text.flip_ratio;
+	const bool text_changed = text.empty ? area_changed : text.flip_ratio > config_.text_flip_ratio;
+	const bool area_settling = area_changed && unsettled_ms_ < config_.moving_area_after_ms;
+	const bool content_changed = text_changed || area_settling;
 	const bool has_content = result.stddev >= config_.min_stddev;
 
 	if (content_changed || !has_content)
@@ -538,6 +607,8 @@ ProcessResult FrameProcessor::evaluate(const GrayscaleFrame &gray, int64_t delta
 	result.generation = generation_;
 	result.still_ms = still_ms_;
 	last_gray_ = std::move(diff_frame);
+	if (content_changed || text.empty)
+		last_text_mask_ = std::move(text_mask);
 	return result;
 }
 

@@ -32,6 +32,13 @@ struct PipelineConfig
 	PromptConfig prompt;
 	OcrPreprocess preprocess = OcrPreprocess::Contrast;
 	bool manual_only = false;
+	// Slow OCR fallback for an area that never settles (a scene moving inside it): one read per
+	// interval, and a line is translated once two reads in a row agree.
+	bool live_fallback = true;
+	int64_t fallback_after_ms = 1500;
+	int64_t fallback_interval_ms = 1500;
+	int64_t fallback_idle_interval_ms = 5000;
+	int fallback_idle_after_reads = 3;
 	size_t context_pairs = 3;
 	size_t backlog_limit = 100;
 	size_t cache_capacity = 256;
@@ -81,6 +88,7 @@ public:
 	void submitFrame(const FrameView &frame, int64_t now_ms);
 	void submitImage(const Image &image, int64_t now_ms);
 	void manualTrigger();
+	void setManualOnly(bool manual_only);
 
 	void setRoi(const Rect &roi);
 	std::vector<TranslationItem> backlog() const;
@@ -98,6 +106,8 @@ private:
 
 	void run(const std::shared_ptr<PipelineShared> &shared);
 	void handleFrame(const std::shared_ptr<PipelineShared> &shared, QueuedFrame frame);
+	static bool fallbackDue(const std::shared_ptr<PipelineShared> &shared, const ProcessResult &result,
+			int64_t now_ms);
 	static void deliver(std::shared_ptr<PipelineShared> shared, const std::string &source,
 			float confidence, int64_t source_timestamp_ms, bool from_cache,
 			const std::string &translation, const Rect &source_box = {},

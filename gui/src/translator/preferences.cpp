@@ -24,6 +24,11 @@ int clampOverlayFontSize(int pixels)
 	return pixels < 0 ? 0 : (pixels > 72 ? 72 : pixels);
 }
 
+int clampOverlayBoxOpacity(int percent)
+{
+	return percent < 20 ? 20 : (percent > 100 ? 100 : percent);
+}
+
 const char *defaultBackendId(bool has_gemini_key)
 {
 	return has_gemini_key ? "gemini" : "google";

@@ -61,6 +61,14 @@ struct FrameProcessorConfig
 	int pixel_delta_threshold = 14;
 	double min_stddev = 2.0;           // reject blank / transparent frames
 	int diff_max_width = 640;          // downscale only the diff, never the crop
+	// Stillness is judged on text-like pixels (the extreme-brightness minority), so a scene
+	// moving behind a see-through dialogue box does not keep resetting it.
+	double text_flip_ratio = 0.02;     // share of text pixels that may flip between samples
+	int text_bright_threshold = 200;   // light text on a dark area
+	int text_dark_threshold = 55;      // dark text on a light area
+	// Until the whole area has kept changing this long, any whole-area change still counts as a
+	// change (a new line in grey or coloured text on a still screen); after it, only text pixels.
+	int moving_area_after_ms = 500;
 };
 
 struct ProcessResult
@@ -73,6 +81,8 @@ struct ProcessResult
 	double structure_similarity = 1.0;
 	double stddev = 0.0;
 	int64_t still_ms = 0;
+	double text_flip_ratio = 0.0;
+	int64_t unsettled_ms = 0;          // how long the whole area has kept changing
 	GrayscaleFrame gray;
 };
 
@@ -97,8 +107,10 @@ public:
 private:
 	FrameProcessorConfig config_;
 	GrayscaleFrame last_gray_;
+	std::vector<uint8_t> last_text_mask_;
 	int64_t last_sample_ms_ = -1;
 	int64_t still_ms_ = 0;
+	int64_t unsettled_ms_ = 0;
 	uint64_t generation_ = 0;
 	uint64_t emitted_generation_ = 0;
 	bool initialized_ = false;

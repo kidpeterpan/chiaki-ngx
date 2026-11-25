@@ -120,6 +120,10 @@ TranslatorManager::TranslatorManager(QObject *parent) : QObject(parent)
 	overlay_font_family_ = settings.value(QStringLiteral("translator/overlay_font_family")).toString();
 	overlay_font_size_ = translator::clampOverlayFontSize(
 		settings.value(QStringLiteral("translator/overlay_font_size"), 0).toInt());
+	live_translation_.store(settings.value(QStringLiteral("translator/live"), true).toBool());
+	overlay_show_source_ = settings.value(QStringLiteral("translator/overlay_show_source"), true).toBool();
+	overlay_box_opacity_ = translator::clampOverlayBoxOpacity(
+		settings.value(QStringLiteral("translator/overlay_box_opacity"), 80).toInt());
 	target_language_ = settings.value(QStringLiteral("translator/target"), QStringLiteral("th")).toString();
 	preprocess_ = settings.value(QStringLiteral("translator/preprocess"), QStringLiteral("contrast")).toString();
 	nllb_model_path_ = settings.value(QStringLiteral("translator/nllb_model"),
@@ -367,6 +371,48 @@ void TranslatorManager::resetShortcuts()
 void TranslatorManager::toggleEnabled()
 {
 	setEnabled(!enabled_.load());
+}
+
+void TranslatorManager::setLiveTranslation(bool live)
+{
+	if (live_translation_.load() != live)
+	{
+		live_translation_.store(live);
+		QSettings().setValue(QStringLiteral("translator/live"), live);
+		{
+			std::lock_guard<std::mutex> lock(pipeline_mutex_);
+			if (pipeline_)
+				pipeline_->setManualOnly(!live);
+		}
+		emit liveTranslationChanged();
+	}
+	if (live && !enabled_.load())
+		setEnabled(true);
+}
+
+// LIVE -> MANUAL; MANUAL or OFF -> LIVE.
+void TranslatorManager::toggleLive()
+{
+	setLiveTranslation(!(enabled_.load() && live_translation_.load()));
+}
+
+void TranslatorManager::setOverlayShowSource(bool show)
+{
+	if (overlay_show_source_ == show)
+		return;
+	overlay_show_source_ = show;
+	QSettings().setValue(QStringLiteral("translator/overlay_show_source"), show);
+	emit overlayStyleChanged();
+}
+
+void TranslatorManager::setOverlayBoxOpacity(int percent)
+{
+	const int clamped = translator::clampOverlayBoxOpacity(percent);
+	if (overlay_box_opacity_ == clamped)
+		return;
+	overlay_box_opacity_ = clamped;
+	QSettings().setValue(QStringLiteral("translator/overlay_box_opacity"), clamped);
+	emit overlayStyleChanged();
 }
 
 void TranslatorManager::setOverlayAutoHideSeconds(int seconds)
@@ -635,6 +681,9 @@ bool TranslatorManager::ensurePipeline(const trans::Rect &roi, QString *error)
 	config.frame.pixel_delta_threshold = 14;
 	config.frame.min_stddev = 2.0;
 	config.frame.diff_max_width = 640;
+	config.manual_only = !live_translation_.load();
+	// A cloud OCR read is a network call; a fallback read every 1.5 s would hit rate limits.
+	config.live_fallback = !cloud_ocr;
 	if (cloud_ocr)
 	{
 		config.ocr.cloud_provider = ocr_provider_.toStdString();
@@ -722,6 +771,10 @@ bool TranslatorManager::ensurePipeline(const trans::Rect &roi, QString *error)
 				setStatus(QStringLiteral("No text in ROI"));
 			else if (value == QStringLiteral("noise"))
 				setStatus(QStringLiteral("Ignored non-dialogue text"));
+			else if (value == QStringLiteral("unsettled"))
+				setStatus(QStringLiteral("Live: waiting for the text to settle"));
+			else if (value == QStringLiteral("fallback"))
+				setStatus(QStringLiteral("Live: reading a moving area"));
 		}, Qt::QueuedConnection);
 	};
 

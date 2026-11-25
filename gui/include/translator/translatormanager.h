@@ -33,6 +33,9 @@ class TranslatorManager : public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged)
+	Q_PROPERTY(bool liveTranslation READ liveTranslation WRITE setLiveTranslation NOTIFY liveTranslationChanged)
+	Q_PROPERTY(bool overlayShowSource READ overlayShowSource WRITE setOverlayShowSource NOTIFY overlayStyleChanged)
+	Q_PROPERTY(int overlayBoxOpacity READ overlayBoxOpacity WRITE setOverlayBoxOpacity NOTIFY overlayStyleChanged)
 	Q_PROPERTY(bool prepared READ prepared NOTIFY preparedChanged)
 	Q_PROPERTY(bool overlayVisible READ overlayVisible WRITE setOverlayVisible NOTIFY overlayVisibleChanged)
 	Q_PROPERTY(bool backlogVisible READ backlogVisible WRITE setBacklogVisible NOTIFY backlogVisibleChanged)
@@ -72,6 +75,9 @@ public:
 	~TranslatorManager() override;
 
 	bool enabled() const { return enabled_.load(); }
+	bool liveTranslation() const { return live_translation_.load(); }
+	bool overlayShowSource() const { return overlay_show_source_; }
+	int overlayBoxOpacity() const { return overlay_box_opacity_; }
 	bool prepared() const { return prepared_.load(); }
 	bool overlayVisible() const { return overlay_visible_; }
 	bool backlogVisible() const { return backlog_visible_; }
@@ -107,6 +113,9 @@ public:
 	QString nllbModelPath() const { return nllb_model_path_; }
 
 	void setEnabled(bool enabled);
+	void setLiveTranslation(bool live);
+	void setOverlayShowSource(bool show);
+	void setOverlayBoxOpacity(int percent);
 	void setOverlayVisible(bool visible);
 	void setOverlayPlacement(const QString &placement);
 	void setBacklogVisible(bool visible);
@@ -117,6 +126,7 @@ public:
 	Q_INVOKABLE bool setShortcuts(const QString &enable, const QString &translate,
 		const QString &overlay, const QString &backlog, const QString &settings);
 	Q_INVOKABLE void toggleEnabled();
+	Q_INVOKABLE void toggleLive();
 	Q_INVOKABLE void resetShortcuts();
 	Q_INVOKABLE void showSettings();
 	Q_INVOKABLE QString shortcutFromKey(int key, int modifiers) const;
@@ -161,6 +171,8 @@ public slots:
 
 signals:
 	void enabledChanged();
+	void liveTranslationChanged();
+	void overlayStyleChanged();
 	void preparedChanged();
 	void overlayVisibleChanged();
 	void backlogVisibleChanged();
@@ -240,6 +252,9 @@ private:
 	int stable_ms_ = 250;
 	QString overlay_font_family_;
 	int overlay_font_size_ = 0;
+	std::atomic<bool> live_translation_{true};
+	bool overlay_show_source_ = true;
+	int overlay_box_opacity_ = 80;
 	QString target_language_;
 	QString preprocess_;
 	QString nllb_model_path_;

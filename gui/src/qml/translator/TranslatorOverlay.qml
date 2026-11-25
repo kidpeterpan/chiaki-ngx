@@ -20,6 +20,7 @@ Item {
     property bool settingsOpen: false
     property bool dictionaryOpen: false
     property bool autoHidden: false
+    readonly property color boxColor: Qt.rgba(11 / 255, 12 / 255, 16 / 255, Translator.overlayBoxOpacity / 100)
     property string captureAction: ""
     readonly property bool menuOpen: settingsOpen || Translator.roiSelectionActive || Translator.backlogVisible || dictionaryOpen
 
@@ -278,7 +279,7 @@ Item {
     Shortcut {
         sequence: Translator.shortcutEnable
         enabled: Translator.shortcutEnable.length > 0
-        onActivated: Translator.toggleEnabled()
+        onActivated: Translator.toggleLive()
     }
     Shortcut {
         sequence: Translator.shortcutTranslate
@@ -333,9 +334,11 @@ Item {
         }
     }
 
-    // Quick real-time enable/disable. Tapping it starts or stops the pipeline.
+    // LIVE: translates on its own. MANUAL: only L4 / Translate now. Tapping switches LIVE and
+    // MANUAL, and turns the translator on from OFF.
     Rectangle {
         id: liveBadge
+        objectName: "liveBadge"
         anchors.top: gear.bottom
         anchors.right: parent.right
         anchors.topMargin: 6
@@ -343,21 +346,24 @@ Item {
         width: 58
         height: 24
         radius: 12
-        color: Translator.enabled ? "#cc00875a" : "#99000000"
+        readonly property string mode: !Translator.enabled ? "OFF"
+            : Translator.liveTranslation ? "LIVE" : "MANUAL"
+        color: mode === "LIVE" ? "#cc00875a" : mode === "MANUAL" ? "#cc8a5a00" : "#99000000"
         border.color: "#66ffffff"
         border.width: 1
         visible: Chiaki.session !== null
 
         Text {
+            objectName: "liveBadgeText"
             anchors.centerIn: parent
-            text: Translator.enabled ? "LIVE" : "OFF"
+            text: liveBadge.mode
             color: "white"
             font.pixelSize: 11
             font.bold: true
         }
 
         TapHandler {
-            onTapped: Translator.toggleEnabled()
+            onTapped: Translator.toggleLive()
         }
     }
 
@@ -391,6 +397,7 @@ Item {
         model: Translator.overlayRegions
         delegate: Rectangle {
             id: regionBlock
+            objectName: "regionBlock"
             readonly property real blockX: (root.videoViewportRect.x +
                 Number(modelData.x) * root.videoViewportRect.width) * parent.width
             readonly property real blockY: (root.videoViewportRect.y +
@@ -404,7 +411,7 @@ Item {
             width: blockW
             height: blockH
             radius: 8
-            color: "#cc0b0c10"
+            color: root.boxColor
             border.color: "#33ffffff"
             border.width: 1
             visible: Chiaki.session !== null && Translator.enabled && Translator.overlayVisible &&
@@ -416,6 +423,8 @@ Item {
                 spacing: 2
 
                 Text {
+                    objectName: "regionSource"
+                    visible: Translator.overlayShowSource
                     width: parent.width
                     text: modelData.source
                     color: "#a8ffffff"
@@ -427,8 +436,9 @@ Item {
                 }
 
                 Text {
+                    objectName: "regionTranslation"
                     width: parent.width
-                    height: parent.height - 20
+                    height: parent.height - (Translator.overlayShowSource ? 20 : 0)
                     text: modelData.translation
                     color: "#fff4e6c8"
                     font.family: Translator.overlayFontFamily
@@ -451,6 +461,7 @@ Item {
     // Translated subtitle. The source line is tappable for dictionary lookup.
     Rectangle {
         id: subtitle
+        objectName: "subtitleBox"
         readonly property bool inPlace: Translator.overlayPlacement === "inplace"
         readonly property real roiX: (root.videoViewportRect.x +
             Translator.roiNormalized.x * root.videoViewportRect.width) * parent.width
@@ -463,7 +474,7 @@ Item {
         width: inPlace ? Math.max(120, Math.min(parent.width - 8, roiW)) : Math.min(parent.width * 0.88, 980)
         height: subtitleColumn.implicitHeight + 24
         radius: 10
-        color: "#cc0b0c10"
+        color: root.boxColor
         border.color: "#33ffffff"
         border.width: 1
         visible: Chiaki.session !== null && Translator.enabled && Translator.overlayVisible &&
@@ -486,6 +497,7 @@ Item {
 
             TextEdit {
                 id: sourceEdit
+                visible: Translator.overlayShowSource
                 width: parent.width - 28
                 x: 14
                 text: Translator.sourceText
@@ -500,6 +512,7 @@ Item {
             }
 
             Item {
+                visible: sourceEdit.visible
                 width: 1
                 height: 1
             }
@@ -521,6 +534,8 @@ Item {
             anchors.fill: parent
             propagateComposedEvents: false
             onClicked: function(mouse) {
+                if (!sourceEdit.visible)
+                    return
                 const origin = sourceEdit.mapToItem(subtitle, 0, 0)
                 const pos = sourceEdit.positionAt(mouse.x - origin.x, mouse.y - origin.y)
                 if (pos >= 0) {
@@ -870,6 +885,17 @@ Item {
                         visible: settingsPanel.section === 0
 
                         TranslatorRow {
+                            label: "Live translation"
+                            hint: "Off: translate only with L4 or Translate now."
+                            DeckComboBox {
+                                Layout.fillWidth: true
+                                model: ["On", "Off"]
+                                currentIndex: Translator.liveTranslation ? 0 : 1
+                                onActivated: index => Translator.liveTranslation = index === 0
+                            }
+                        }
+
+                        TranslatorRow {
                             label: "OCR"
                             DeckComboBox {
                                 id: ocrBox
@@ -1082,6 +1108,28 @@ Item {
                                 to: 72
                                 value: Translator.overlayFontSize
                                 onValueModified: Translator.overlayFontSize = value
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Original text"
+                            hint: "Hide gives the translation the whole box."
+                            DeckComboBox {
+                                Layout.fillWidth: true
+                                model: ["Show", "Hide"]
+                                currentIndex: Translator.overlayShowSource ? 0 : 1
+                                onActivated: index => Translator.overlayShowSource = index === 0
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Box opacity (%)"
+                            DeckSpinBox {
+                                from: 20
+                                to: 100
+                                stepSize: 10
+                                value: Translator.overlayBoxOpacity
+                                onValueModified: Translator.overlayBoxOpacity = value
                             }
                         }
                     }

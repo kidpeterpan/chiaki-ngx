@@ -7,6 +7,7 @@
 SHA-256 อยู่ในไฟล์ `chiaki-ngx-translator-x86_64.AppImage.sha256` ของ release เดียวกัน
 
 ใช้ **v0.1.0** ขึ้นไป: real-time toggle, touch, Chrome Screen AI, Decky-Translator providers และหน้า settings ที่ใช้ controller ได้
+**v0.1.1** เพิ่ม: แปล live ได้แม้ฉากหลังกล่องข้อความขยับ, badge LIVE / MANUAL / OFF, ซ่อนข้อความต้นฉบับ, ปรับความทึบกล่อง และ dropdown ที่กด A แล้วเปิดค้างได้
 release ชุด v0.2.x เดิมถูกถอนออกแล้ว (ปิดแอปได้เมื่อใช้ Chrome Screen AI แล้วเปลี่ยน settings และ curl ที่ bundle มามี CVE)
 
 ## ติดตั้งบน Steam Deck
@@ -56,12 +57,15 @@ release ชุด v0.2.x เดิมถูกถอนออกแล้ว (�
 แก้ได้ในแผง translator → หัวข้อ **Hotkeys**:
 
 - รองรับปุ่มเดี่ยว (`F13`) และ combination (`Ctrl+Shift+T`)
-- มีปุ่ม **Live** ใน Chiaki stream menu และ badge LIVE/OFF ใต้มุมขวาบนสำหรับเปิด/ปิด real-time translation ทันที
+- ปุ่ม **Live** ใน Chiaki stream menu, badge ใต้มุมขวาบน และ `F11` สลับการแปลอัตโนมัติ (live) ได้ทันที
+  - badge **LIVE** = แปลเองเมื่อข้อความนิ่ง, **MANUAL** = แปลเฉพาะตอนกด L4 / Translate now, **OFF** = ปิด translator
+  - กดตอน LIVE → MANUAL; กดตอน MANUAL หรือ OFF → LIVE (ถ้า translator ปิดอยู่จะเปิดให้ด้วย)
+  - ปิด translator ทั้งหมดใช้ปุ่ม **Turn off** ในการ์ด Translator ของหน้า settings
 - เว้นว่าง = ปิด shortcut นั้น
 - ตรวจ conflict ระหว่าง 4 actions: Translate, Overlay, Backlog, Settings
 - บันทึกใน QSettings
 
-ค่าเริ่มต้น: `F11` เปิด/ปิด real-time, `F13` แปล, `F14` ซ่อน/แสดง, `F15` backlog, `F12` เปิด settings
+ค่าเริ่มต้น: `F11` สลับ LIVE / MANUAL, `F13` แปล, `F14` ซ่อน/แสดง, `F15` backlog, `F12` เปิด settings
 
 ## Timing
 
@@ -70,6 +74,14 @@ release ชุด v0.2.x เดิมถูกถอนออกแล้ว (�
 - **Hide after (s)** — ให้ overlay แปลหายอัตโนมัติหลัง N วินาที (`0` = ไม่หาย)
 - **Scan interval (ms)** — ความถี่ในการตรวจภาพ/ข้อความใหม่ (50–2000 ms)
 - **Stable time (ms)** — ข้อความต้องนิ่งนานเท่าไรก่อน OCR/แปล (100–5000 ms)
+- **Live translation** (หัวข้อ Setup) — On = แปลอัตโนมัติ, Off = แปลเฉพาะตอนกด L4 / Translate now
+
+"นิ่ง" วัดจาก pixel ที่เป็นตัวอักษร (สว่างมากบนพื้นมืด หรือมืดมากบนพื้นสว่าง) ไม่ใช่ทั้งกรอบ
+ฉากที่ขยับอยู่หลังกล่องข้อความโปร่งแสงจึงไม่ทำให้ live ค้าง ถ้ากรอบยังขยับไม่หยุดเกิน 1.5 วินาที
+ระบบจะ OCR ช้าๆ ทุก 1.5 วินาที (ถ้า 3 ครั้งติดไม่เจอข้อความใหม่ เช่นไม่มีข้อความหรือเป็นบรรทัดที่แปลแล้ว จะเว้นเป็น 5 วินาที)
+และแปลเมื่ออ่านได้ข้อความเดิมสองครั้งติดกัน บรรทัดสถานะจะขึ้น "Live: waiting for the text to settle"
+หรือ "Live: reading a moving area" ให้รู้ว่ากำลังรออยู่ตรงไหน
+OCR แบบ cloud (Google Vision, Gemini Vision, OCR.space) ไม่มีการอ่านสำรองนี้ เพราะทุกครั้งคือ network call
 
 ## Hotkey capture
 
@@ -82,6 +94,8 @@ release ชุด v0.2.x เดิมถูกถอนออกแล้ว (�
 - **In-place (over source text)** — ค่าเริ่มต้น; ใช้ bounding box ของแต่ละ dialogue block เพื่อวางคำแปลให้ตรงตำแหน่ง
 - **Bottom center** — วางกรอบคำแปลกลางล่างจอ
 - **Overlay font / Size** — เลือกฟอนต์และขนาด (0 = auto-fit)
+- **Original text** — Show = แสดงข้อความต้นฉบับเหนือคำแปล (ค่าเริ่มต้น), Hide = ซ่อน ให้คำแปลได้พื้นที่ทั้งกล่อง (วางทับข้อความเดิม + Font size = 0 คำแปลจะขยายเต็มกล่อง; Bottom center ได้แค่พื้นที่เพิ่ม ขนาดตัวอักษรเท่าเดิม)
+- **Box opacity (%)** — ความทึบของกล่องพื้นหลัง 20–100% (ค่าเริ่มต้น 80)
 
 ถ้าภาพยังไม่ตรงตำแหน่ง ให้เลือก ROI ให้แน่นขึ้นหรือสลับเป็น Bottom center
 
@@ -95,7 +109,7 @@ release ชุด v0.2.x เดิมถูกถอนออกแล้ว (�
      (บันทึกอัตโนมัติเมื่อออกจากช่อง; ถ้ายังไม่มี key การ์ด **Translation engine** จะขึ้น ⚠ พร้อมปุ่ม **Add key** และ **Use free Google**)
    - **Offline NLLB** → ต้องใช้ build ที่เปิด CTranslate2 และมีโมเดลแยก (ไม่รวมใน AppImage นี้)
 5. ในการ์ด **Subtitle area** กด **Select area** แล้วลากกรอบซับ
-6. ระบบจะแปลอัตโนมัติเมื่อข้อความนิ่ง 250 ms
+6. ระบบจะแปลอัตโนมัติเมื่อข้อความนิ่ง 250 ms (badge **LIVE**); ถ้าอยากแปลเฉพาะตอนกด L4 ให้แตะ badge เป็น **MANUAL**
 7. ค่าที่แก้ในหน้า settings จะมีผลเมื่อปิดหน้า settings
 
 หน้า settings ใช้ controller ได้ทั้งหมด:

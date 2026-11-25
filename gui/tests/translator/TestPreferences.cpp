@@ -38,6 +38,15 @@ int main()
 	}
 	std::printf("PASS timing preference clamps\n");
 
+	if (translator::clampOverlayBoxOpacity(0) != 20 ||
+			translator::clampOverlayBoxOpacity(80) != 80 ||
+			translator::clampOverlayBoxOpacity(150) != 100)
+	{
+		std::fprintf(stderr, "overlay box opacity clamp failed\n");
+		return 1;
+	}
+	std::printf("PASS overlay box opacity clamp\n");
+
 	// New installs default to the keyless backend; an install that relied on the old
 	// implicit Gemini default and saved a Gemini key keeps Gemini.
 	if (std::strcmp(translator::defaultBackendId(false), "google") != 0 ||
