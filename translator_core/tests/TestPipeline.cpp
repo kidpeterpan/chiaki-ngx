@@ -3,6 +3,7 @@
 
 #include <trans/TranslatorPipeline.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -147,6 +148,48 @@ PipelineCallbacks MakeCallbacks(std::shared_ptr<Collector> collector)
 		collector->states.push_back(state);
 	};
 	return callbacks;
+}
+
+// A scene that never settles: every pixel, bright and dark, moves between submissions.
+Image MakeMovingImage(int width, int height, int step)
+{
+	Image image;
+	image.width = width;
+	image.height = height;
+	image.stride = width * 3;
+	image.pixels.resize(static_cast<size_t>(width) * height * 3);
+	for (int y = 0; y < height; ++y)
+	{
+		uint8_t *row = image.mutableRow(y);
+		for (int x = 0; x < width; ++x)
+		{
+			const uint8_t value = static_cast<uint8_t>((x * 31 + y * 17 + step * 53) % 256);
+			row[x * 3] = value;
+			row[x * 3 + 1] = value;
+			row[x * 3 + 2] = value;
+		}
+	}
+	return image;
+}
+
+// Submits a moving image every 100 ms of stream time from `from_ms` up to (not including)
+// `to_ms`, waiting for the worker to sample each one so no frame is dropped.
+void FeedMoving(TranslatorPipeline &pipeline, int64_t from_ms, int64_t to_ms)
+{
+	for (int64_t now = from_ms; now < to_ms; now += 100)
+	{
+		const uint64_t before = pipeline.stats().samples;
+		pipeline.submitImage(MakeMovingImage(64, 32, static_cast<int>(now / 100)), now);
+		for (int wait = 0; wait < 500 && pipeline.stats().samples == before; ++wait)
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+bool HasState(Collector &collector, const std::string &state)
+{
+	std::lock_guard<std::mutex> lock(collector.mutex);
+	return std::find(collector.states.begin(), collector.states.end(), state) != collector.states.end();
 }
 
 PipelineConfig MakeConfig()
@@ -396,5 +439,120 @@ TEST(pipeline_does_not_translate_without_change_or_manual_trigger)
 
 	ASSERT_EQ(collector->itemCount(), static_cast<size_t>(0));
 	ASSERT_EQ(backend->calls.load(), 0);
+	pipeline.stop();
+}
+
+TEST(pipeline_fallback_translates_a_line_after_two_matching_reads)
+{
+	auto ocr = std::make_shared<FakeOcrEngine>();
+	auto backend = std::make_shared<FakeBackend>();
+	auto collector = std::make_shared<Collector>();
+
+	TranslatorPipeline pipeline;
+	std::string error;
+	ASSERT_TRUE(pipeline.start(MakeConfig(), ocr, backend, MakeCallbacks(collector), &error));
+	FeedMoving(pipeline, 0, 4000);
+
+	ASSERT_EQ(collector->itemCount(), static_cast<size_t>(1));
+	ASSERT_EQ(collector->items[0].source_text, "こんにちは");
+	const PipelineStats stats = pipeline.stats();
+	ASSERT_TRUE(stats.ocr_runs >= 2 && stats.ocr_runs <= 4);
+	ASSERT_TRUE(HasState(*collector, "unsettled"));
+	ASSERT_TRUE(HasState(*collector, "fallback"));
+	pipeline.stop();
+}
+
+TEST(pipeline_live_off_runs_no_automatic_ocr)
+{
+	auto ocr = std::make_shared<FakeOcrEngine>();
+	auto backend = std::make_shared<FakeBackend>();
+	auto collector = std::make_shared<Collector>();
+
+	PipelineConfig config = MakeConfig();
+	config.manual_only = true;
+	TranslatorPipeline pipeline;
+	std::string error;
+	ASSERT_TRUE(pipeline.start(config, ocr, backend, MakeCallbacks(collector), &error));
+	FeedMoving(pipeline, 0, 4000);
+	ASSERT_EQ(collector->itemCount(), static_cast<size_t>(0));
+	ASSERT_EQ(pipeline.stats().ocr_runs, static_cast<uint64_t>(0));
+
+	pipeline.manualTrigger();
+	pipeline.submitImage(MakeImage(64, 32, 200, 3), 5000);
+	ASSERT_TRUE(collector->waitForItems(1));
+	pipeline.stop();
+}
+
+TEST(pipeline_set_manual_only_takes_effect_while_running)
+{
+	auto ocr = std::make_shared<FakeOcrEngine>();
+	auto backend = std::make_shared<FakeBackend>();
+	auto collector = std::make_shared<Collector>();
+
+	TranslatorPipeline pipeline;
+	std::string error;
+	ASSERT_TRUE(pipeline.start(MakeConfig(), ocr, backend, MakeCallbacks(collector), &error));
+	pipeline.setManualOnly(true);
+	FeedMoving(pipeline, 0, 4000);
+	const Image still = MakeImage(64, 32, 200, 3);
+	for (int64_t now = 4000; now < 4500; now += 100)
+		pipeline.submitImage(still, now);
+	std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+	ASSERT_EQ(collector->itemCount(), static_cast<size_t>(0));
+	ASSERT_EQ(pipeline.stats().ocr_runs, static_cast<uint64_t>(0));
+	pipeline.stop();
+}
+
+TEST(pipeline_fallback_backs_off_after_empty_reads)
+{
+	auto ocr = std::make_shared<FakeOcrEngine>();
+	ocr->text.clear();
+	auto backend = std::make_shared<FakeBackend>();
+	auto collector = std::make_shared<Collector>();
+
+	TranslatorPipeline pipeline;
+	std::string error;
+	ASSERT_TRUE(pipeline.start(MakeConfig(), ocr, backend, MakeCallbacks(collector), &error));
+	FeedMoving(pipeline, 0, 9000);
+
+	// Reads at 1500, 3000 and 4500 find nothing; the next would be due at 9500, not 6000.
+	ASSERT_EQ(pipeline.stats().ocr_runs, static_cast<uint64_t>(3));
+	pipeline.stop();
+}
+
+TEST(pipeline_fallback_off_for_cloud_ocr)
+{
+	auto ocr = std::make_shared<FakeOcrEngine>();
+	auto backend = std::make_shared<FakeBackend>();
+	auto collector = std::make_shared<Collector>();
+
+	PipelineConfig config = MakeConfig();
+	config.live_fallback = false;
+	TranslatorPipeline pipeline;
+	std::string error;
+	ASSERT_TRUE(pipeline.start(config, ocr, backend, MakeCallbacks(collector), &error));
+	FeedMoving(pipeline, 0, 4000);
+
+	ASSERT_EQ(collector->itemCount(), static_cast<size_t>(0));
+	ASSERT_EQ(pipeline.stats().ocr_runs, static_cast<uint64_t>(0));
+	pipeline.stop();
+}
+
+TEST(pipeline_fallback_does_not_reshow_a_line_past_the_ttl)
+{
+	auto ocr = std::make_shared<FakeOcrEngine>();
+	auto backend = std::make_shared<FakeBackend>();
+	auto collector = std::make_shared<Collector>();
+
+	PipelineConfig config = MakeConfig();
+	config.dedup_ttl_ms = 1000;
+	TranslatorPipeline pipeline;
+	std::string error;
+	ASSERT_TRUE(pipeline.start(config, ocr, backend, MakeCallbacks(collector), &error));
+	FeedMoving(pipeline, 0, 8000);
+
+	ASSERT_EQ(collector->itemCount(), static_cast<size_t>(1));
+	ASSERT_TRUE(pipeline.stats().ocr_runs >= 4);
 	pipeline.stop();
 }
