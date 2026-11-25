@@ -171,20 +171,25 @@ Item {
             verify(Translator.enabled, "Live off keeps the translator on")
         }
 
+        // A dialogue box about as tall as a game's (two short lines), with a translation that
+        // auto-fit has to shrink while the original line takes its share of the box.
         function test_hidden_source_gives_translation_the_box() {
             Translator.enabled = true
-            Translator.overlayRegions = [{ x: 0.1, y: 0.6, width: 0.8, height: 0.25,
-                                           source: "こんにちは", translation: "สวัสดี" }]
+            Translator.overlayRegions = [{ x: 0.1, y: 0.8, width: 0.5, height: 0.07,
+                                           source: "今日はいい天気ですね。散歩に行きましょう。",
+                                           translation: "วันนี้อากาศดีนะ ไปเดินเล่นกันเถอะ แล้วค่อยกลับมากินข้าวด้วยกัน" }]
             wait(20)
             const block = findChild(overlay, "regionBlock")
             const source = findChild(block, "regionSource")
             const translation = findChild(block, "regionTranslation")
             verify(source.visible)
             verify(translation.height < block.height - 16)
+            const fittedSize = translation.fontInfo.pixelSize
             Translator.overlayShowSource = false
             wait(20)
             verify(!source.visible)
             compare(translation.height, block.height - 16)
+            verify(translation.fontInfo.pixelSize > fittedSize, "auto-fit translation grows into the freed space")
         }
 
         function test_box_opacity_sets_background_alpha() {

@@ -24,10 +24,10 @@ optional, in-viewport Japanese subtitle translator for Steam Deck and desktop pl
 | Translation | Google Translate (free, the default: no API key needed), Gemini, Google Cloud Translation, DeepL, OpenAI-compatible/OpenCode Go, and offline NLLB-200 |
 | Context | Rolling 3-line dialogue context, LRU translation cache, Levenshtein duplicate suppression |
 | Dictionary | Offline JMdict SQLite lookup with deinflection and tap-to-define |
-| Overlay | Box-accurate multi-block in-place overlay, bottom fallback, configurable auto-hide, font family and size |
-| Timing | Configurable scan interval and text-stability delay |
+| Overlay | Box-accurate multi-block in-place overlay, bottom fallback, configurable auto-hide, font family and size, original line Show/Hide (Hide gives the translation the whole box), box opacity 20–100% |
+| Timing | Configurable scan interval and text-stability delay; stability is judged on text pixels, so a scene moving behind a see-through dialogue box does not block live translation, and a slow OCR fallback (every 1.5 s, backing off to 5 s, none for cloud OCR) still reads an area that never settles |
 | Settings | Steam Deck controller navigation (D-pad moves, left/right changes, A selects, B closes, L1/R1 switch sections), a setup checklist that names what is missing and how to fix it, settings applied when the panel closes |
-| Controls | Steam Deck L4/R4/L5/R5, touch routing, live enable/disable, remappable hotkeys with key capture |
+| Controls | Steam Deck L4/R4/L5/R5, touch routing, a Live switch (LIVE: translates on its own; MANUAL: only L4 / Translate now; OFF) on the badge, F11 and the stream menu, remappable hotkeys with key capture |
 | Packaging | Steam Deck / Linux x86_64 AppImage with curl 8.23 on a static OpenSSL 3, plus upstream Flatpak/Windows build paths |
 | Quality | translator-core, cloud backend, cloud OCR, shortcut, preference, overlay geometry and controller-driven QML settings tests, run by `scripts/verify.sh --full` (see [Verification](#verification)); a Chrome Screen AI restart test joins them on Linux once the library is fetched |
 
