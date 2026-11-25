@@ -45,6 +45,10 @@ class TranslatorManager : public QObject
 	Q_PROPERTY(QString ocrProvider READ ocrProvider WRITE setOcrProvider NOTIFY ocrProviderChanged)
 	Q_PROPERTY(QStringList ocrProviderIds READ ocrProviderIds CONSTANT)
 	Q_PROPERTY(QString ocrApiKey READ ocrApiKey WRITE setOcrApiKey NOTIFY ocrApiKeyChanged)
+	Q_PROPERTY(QString shortcutTranslate READ shortcutTranslate NOTIFY shortcutsChanged)
+	Q_PROPERTY(QString shortcutOverlay READ shortcutOverlay NOTIFY shortcutsChanged)
+	Q_PROPERTY(QString shortcutBacklog READ shortcutBacklog NOTIFY shortcutsChanged)
+	Q_PROPERTY(QString shortcutSettings READ shortcutSettings NOTIFY shortcutsChanged)
 	Q_PROPERTY(QString targetLanguage READ targetLanguage WRITE setTargetLanguage NOTIFY targetLanguageChanged)
 	Q_PROPERTY(QVariantMap roiNormalized READ roiNormalized NOTIFY roiChanged)
 	Q_PROPERTY(QVariantList backlog READ backlog NOTIFY backlogChanged)
@@ -72,6 +76,10 @@ public:
 	QString ocrProvider() const { return ocr_provider_; }
 	QStringList ocrProviderIds() const { return QStringList{"paddle", "rapidocr", "google-vision", "gemini-vision", "ocrspace", "chromescreenai"}; }
 	QString ocrApiKey() const { return ocr_api_key_; }
+	QString shortcutTranslate() const { return shortcut_translate_; }
+	QString shortcutOverlay() const { return shortcut_overlay_; }
+	QString shortcutBacklog() const { return shortcut_backlog_; }
+	QString shortcutSettings() const { return shortcut_settings_; }
 	QString targetLanguage() const { return target_language_; }
 	QVariantMap roiNormalized() const;
 	QVariantList backlog() const { return backlog_; }
@@ -89,6 +97,10 @@ public:
 	void setBackendId(const QString &backend_id);
 	void setOcrProvider(const QString &provider);
 	void setOcrApiKey(const QString &key);
+	Q_INVOKABLE bool setShortcuts(const QString &translate, const QString &overlay,
+		const QString &backlog, const QString &settings);
+	Q_INVOKABLE void resetShortcuts();
+	Q_INVOKABLE void showSettings();
 	void setTargetLanguage(const QString &language);
 
 	// Called from the decoder thread with a frame that is still owned by the
@@ -133,6 +145,8 @@ signals:
 	void backendIdChanged();
 	void ocrProviderChanged();
 	void ocrApiKeyChanged();
+	void shortcutsChanged();
+	void settingsRequested();
 	void targetLanguageChanged();
 	void roiChanged();
 	void backlogChanged();
@@ -184,6 +198,10 @@ private:
 	QString backend_id_;
 	QString ocr_provider_;
 	QString ocr_api_key_;
+	QString shortcut_translate_;
+	QString shortcut_overlay_;
+	QString shortcut_backlog_;
+	QString shortcut_settings_;
 	QString target_language_;
 	QString preprocess_;
 	QString nllb_model_path_;

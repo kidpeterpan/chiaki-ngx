@@ -56,6 +56,22 @@ scripts/translator/fetch-assets.sh   # includes fetch-screenai on Linux x86_64
 scripts/translator/build-appimage.sh
 ```
 
+## เปิด settings จาก Chiaki menu
+
+นอกจากกดไอคอน **訳** มุมขวาบนแล้ว เปิดแผง translator ได้จาก **stream menu ของ Chiaki**
+(ปุ่ม `Ctrl+O` หรือปุ่ม stream menu บนจอย) → กดปุ่ม **訳** ในแถบเมนู
+
+## Hotkeys
+
+แก้ได้ในแผง translator → หัวข้อ **Hotkeys**:
+
+- รองรับปุ่มเดี่ยว (`F13`) และ combination (`Ctrl+Shift+T`)
+- เว้นว่าง = ปิด shortcut นั้น
+- ตรวจ conflict ระหว่าง 4 actions: Translate, Overlay, Backlog, Settings
+- บันทึกใน QSettings
+
+ค่าเริ่มต้น: `F13` แปล, `F14` ซ่อน/แสดง, `F15` backlog, `F12` เปิด settings
+
 ## ใช้งาน
 
 1. เชื่อมต่อ PS5 ตามปกติ

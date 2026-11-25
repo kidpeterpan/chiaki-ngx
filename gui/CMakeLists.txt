@@ -66,6 +66,8 @@ if(TARGET translator_core)
 		src/translator/cloudocr.cpp
 		include/translator/screenai.h
 		src/translator/screenai.cpp
+		include/translator/shortcuts.h
+		src/translator/shortcuts.cpp
 	)
 endif()
 set(RESOURCE_FILES "")
@@ -167,6 +169,17 @@ if(CHIAKI_ENABLE_TESTS AND TARGET translator_core)
 		# call the add_test below is ignored and ctest never sees the target.
 		enable_testing()
 		add_test(NAME translator_cloud_tests COMMAND translator_cloud_tests)
+	endif()
+	if(TARGET Qt6::Gui)
+		add_executable(translator_shortcut_tests
+			tests/translator/TestShortcuts.cpp
+			include/translator/shortcuts.h
+			src/translator/shortcuts.cpp
+		)
+		target_include_directories(translator_shortcut_tests PRIVATE include)
+		target_link_libraries(translator_shortcut_tests PRIVATE Qt6::Core Qt6::Gui)
+		enable_testing()
+		add_test(NAME translator_shortcut_tests COMMAND translator_shortcut_tests)
 	endif()
 	if(TARGET Qt6::Network AND TARGET Qt6::Gui)
 		add_executable(translator_cloud_ocr_tests

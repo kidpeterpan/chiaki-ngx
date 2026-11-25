@@ -106,6 +106,24 @@ Window {
                     else
                         streamMenuWindow.mainViewRequested();
                 }
+                KeyNavigation.right: translatorMenuButton
+                Keys.onReturnPressed: clicked()
+                Keys.onEscapePressed: streamMenuWindow.closeRequested()
+            }
+
+            ToolButton {
+                id: translatorMenuButton
+                Layout.rightMargin: 10
+                text: "訳"
+                padding: 10
+                font.pixelSize: 22
+                down: activeFocus
+                activeFocusOnTab: true
+                onClicked: {
+                    streamMenuWindow.translatorSettingsRequested();
+                    streamMenuWindow.closeRequested();
+                }
+                KeyNavigation.left: closeButton
                 KeyNavigation.right: volumeSlider
                 Keys.onReturnPressed: clicked()
                 Keys.onEscapePressed: streamMenuWindow.closeRequested()
@@ -127,7 +145,7 @@ Window {
                 stepSize: 1
                 value: Chiaki.settings.audioVolume
                 onMoved: Chiaki.settings.audioVolume = value
-                KeyNavigation.left: closeButton
+                KeyNavigation.left: translatorMenuButton
                 KeyNavigation.right: muteButton
                 Keys.onEscapePressed: streamMenuWindow.closeRequested()
 

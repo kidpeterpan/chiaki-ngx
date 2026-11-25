@@ -493,6 +493,23 @@ Item {
                         else
                             root.showMainView();
                     }
+                    KeyNavigation.right: translatorMenuButton
+                    Keys.onReturnPressed: clicked()
+                    Keys.onEscapePressed: menuController.close()
+                }
+
+                ToolButton {
+                    id: translatorMenuButton
+                    Layout.rightMargin: 10
+                    text: "訳"
+                    padding: 10
+                    font.pixelSize: 22
+                    down: activeFocus
+                    onClicked: {
+                        menuController.close()
+                        Qt.callLater(function() { Translator.showSettings() })
+                    }
+                    KeyNavigation.left: closeButton
                     KeyNavigation.right: volumeSlider
                     Keys.onReturnPressed: clicked()
                     Keys.onEscapePressed: menuController.close()
@@ -514,7 +531,7 @@ Item {
                 stepSize: 1
                 value: Chiaki.settings.audioVolume
                 onMoved: Chiaki.settings.audioVolume = value
-                KeyNavigation.left: closeButton
+                KeyNavigation.left: translatorMenuButton
                 KeyNavigation.right: muteButton
                 Keys.onEscapePressed: menuController.close()
                 Label {
@@ -892,6 +909,10 @@ Item {
         open: useSeparateMenuWindow && menuController.open
         closing: useSeparateMenuWindow && menuController.closing
         onCloseRequested: menuController.close()
+        onTranslatorSettingsRequested: {
+            menuController.close()
+            Qt.callLater(function() { Translator.showSettings() })
+        }
         onDisplaySettingsRequested: {
             menuController.close();
             root.openDisplaySettings();

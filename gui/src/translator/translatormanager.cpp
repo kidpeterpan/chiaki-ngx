@@ -4,6 +4,7 @@
 #include "translator/cloudbackends.h"
 #include "translator/cloudocr.h"
 #include "translator/screenai.h"
+#include "translator/shortcuts.h"
 
 #include <trans/DictLookup.hpp>
 #include <trans/NllbBackend.hpp>
@@ -88,6 +89,17 @@ TranslatorManager::TranslatorManager(QObject *parent) : QObject(parent)
 	if (!ocrProviderIds().contains(ocr_provider_))
 		ocr_provider_ = QStringLiteral("paddle");
 	ocr_api_key_ = settings.value(QStringLiteral("translator/ocr_api_key")).toString();
+	auto load_shortcut = [&settings](const char *key, const QString &fallback) {
+		const QString stored = settings.value(QString::fromLatin1(key), fallback).toString();
+		if (stored.trimmed().isEmpty())
+			return QString();
+		const QString normalized = translator::normalizeShortcut(stored);
+		return normalized.isEmpty() ? fallback : normalized;
+	};
+	shortcut_translate_ = load_shortcut("translator/shortcut/translate", QStringLiteral("F13"));
+	shortcut_overlay_ = load_shortcut("translator/shortcut/overlay", QStringLiteral("F14"));
+	shortcut_backlog_ = load_shortcut("translator/shortcut/backlog", QStringLiteral("F15"));
+	shortcut_settings_ = load_shortcut("translator/shortcut/settings", QStringLiteral("F12"));
 	target_language_ = settings.value(QStringLiteral("translator/target"), QStringLiteral("th")).toString();
 	preprocess_ = settings.value(QStringLiteral("translator/preprocess"), QStringLiteral("contrast")).toString();
 	nllb_model_path_ = settings.value(QStringLiteral("translator/nllb_model"),
@@ -290,6 +302,52 @@ void TranslatorManager::setOcrApiKey(const QString &key)
 	emit ocrApiKeyChanged();
 	if (prepared_.load())
 		restartPipeline();
+}
+
+bool TranslatorManager::setShortcuts(const QString &translate, const QString &overlay,
+	const QString &backlog, const QString &settings)
+{
+	const QString inputs[4] = {translate, overlay, backlog, settings};
+	const char *keys[4] = {"translator/shortcut/translate", "translator/shortcut/overlay",
+		"translator/shortcut/backlog", "translator/shortcut/settings"};
+	QString normalized[4];
+	for (int index = 0; index < 4; ++index)
+	{
+		if (!translator::isValidShortcut(inputs[index]))
+		{
+			setStatus(QStringLiteral("Invalid shortcut: %1").arg(inputs[index]));
+			return false;
+		}
+		normalized[index] = translator::normalizeShortcut(inputs[index]);
+	}
+	for (int left = 0; left < 4; ++left)
+		for (int right = left + 1; right < 4; ++right)
+			if (translator::shortcutsConflict(normalized[left], normalized[right]))
+			{
+				setStatus(QStringLiteral("Shortcut is used by more than one action: %1")
+					.arg(normalized[left]));
+				return false;
+			}
+	shortcut_translate_ = normalized[0];
+	shortcut_overlay_ = normalized[1];
+	shortcut_backlog_ = normalized[2];
+	shortcut_settings_ = normalized[3];
+	QSettings settings_store;
+	for (int index = 0; index < 4; ++index)
+		settings_store.setValue(QString::fromLatin1(keys[index]), normalized[index]);
+	emit shortcutsChanged();
+	setStatus(QStringLiteral("Hotkeys saved"));
+	return true;
+}
+
+void TranslatorManager::resetShortcuts()
+{
+	setShortcuts(QStringLiteral("F13"), QStringLiteral("F14"), QStringLiteral("F15"), QStringLiteral("F12"));
+}
+
+void TranslatorManager::showSettings()
+{
+	emit settingsRequested();
 }
 
 void TranslatorManager::setTargetLanguage(const QString &language)

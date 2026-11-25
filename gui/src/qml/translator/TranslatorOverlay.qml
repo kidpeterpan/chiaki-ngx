@@ -53,6 +53,11 @@ Item {
     }
 
     Connections {
+        target: Translator
+        function onSettingsRequested() { root.settingsOpen = true }
+    }
+
+    Connections {
         target: Chiaki
         function onSessionChanged() {
             if (Chiaki.session && Translator.enabled)
@@ -73,16 +78,24 @@ Item {
     }
 
     Shortcut {
-        sequence: "F13"
+        sequence: Translator.shortcutTranslate
+        enabled: Translator.shortcutTranslate.length > 0
         onActivated: Translator.manualTranslate()
     }
     Shortcut {
-        sequence: "F14"
+        sequence: Translator.shortcutOverlay
+        enabled: Translator.shortcutOverlay.length > 0
         onActivated: Translator.toggleOverlay()
     }
     Shortcut {
-        sequence: "F15"
+        sequence: Translator.shortcutBacklog
+        enabled: Translator.shortcutBacklog.length > 0
         onActivated: Translator.toggleBacklog()
+    }
+    Shortcut {
+        sequence: Translator.shortcutSettings
+        enabled: Translator.shortcutSettings.length > 0
+        onActivated: root.settingsOpen = true
     }
 
     // Small always-available entry point. Kept away from the centre so it does
@@ -364,11 +377,16 @@ Item {
         border.color: "#55ffffff"
         border.width: 1
 
-        Column {
-            id: settingsColumn
+        ScrollView {
             anchors.fill: parent
-            anchors.margins: 18
-            spacing: 10
+            anchors.margins: 10
+            clip: true
+            ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+            Column {
+                id: settingsColumn
+                width: settingsPanel.width - 40
+                spacing: 10
 
             Text {
                 text: "Subtitle translator"
@@ -583,6 +601,82 @@ Item {
 
             Text {
                 width: parent.width
+                text: "Hotkeys — combinations such as F13 or Ctrl+Shift+T; leave empty to disable"
+                color: "#dddddd"
+                font.pixelSize: 13
+                font.bold: true
+                wrapMode: Text.Wrap
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                Text { text: "Translate"; color: "#dddddd"; font.pixelSize: 13 }
+                TextField {
+                    id: shortcutTranslateField
+                    Layout.fillWidth: true
+                    placeholderText: "F13"
+                    text: Translator.shortcutTranslate
+                }
+                Text { text: "Overlay"; color: "#dddddd"; font.pixelSize: 13 }
+                TextField {
+                    id: shortcutOverlayField
+                    Layout.fillWidth: true
+                    placeholderText: "F14"
+                    text: Translator.shortcutOverlay
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                Text { text: "Backlog"; color: "#dddddd"; font.pixelSize: 13 }
+                TextField {
+                    id: shortcutBacklogField
+                    Layout.fillWidth: true
+                    placeholderText: "F15"
+                    text: Translator.shortcutBacklog
+                }
+                Text { text: "Settings"; color: "#dddddd"; font.pixelSize: 13 }
+                TextField {
+                    id: shortcutSettingsField
+                    Layout.fillWidth: true
+                    placeholderText: "F12"
+                    text: Translator.shortcutSettings
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                Button {
+                    text: "Save hotkeys"
+                    onClicked: {
+                        if (Translator.setShortcuts(shortcutTranslateField.text,
+                                shortcutOverlayField.text, shortcutBacklogField.text,
+                                shortcutSettingsField.text)) {
+                            shortcutTranslateField.text = Translator.shortcutTranslate
+                            shortcutOverlayField.text = Translator.shortcutOverlay
+                            shortcutBacklogField.text = Translator.shortcutBacklog
+                            shortcutSettingsField.text = Translator.shortcutSettings
+                        }
+                    }
+                }
+                Button {
+                    text: "Reset hotkeys"
+                    onClicked: {
+                        Translator.resetShortcuts()
+                        shortcutTranslateField.text = Translator.shortcutTranslate
+                        shortcutOverlayField.text = Translator.shortcutOverlay
+                        shortcutBacklogField.text = Translator.shortcutBacklog
+                        shortcutSettingsField.text = Translator.shortcutSettings
+                    }
+                }
+                Item { Layout.fillWidth: true }
+            }
+
+            Text {
+                width: parent.width
                 text: Translator.statusText
                 color: "#ffd27a"
                 font.pixelSize: 12
@@ -607,6 +701,7 @@ Item {
                     text: "Close"
                     onClicked: root.settingsOpen = false
                 }
+            }
             }
         }
     }
