@@ -458,6 +458,20 @@ QmlBackend::QmlBackend(Settings *settings, QmlMainWindow *window)
     refreshPsnToken();
 }
 
+bool QmlBackend::translatorAcceptsTouch(const QPointF &position) const
+{
+#ifdef CHIAKI_ENABLE_TRANSLATOR
+	if (!translator || !window)
+		return false;
+	// The QML gear is anchored top-right (38 px + 12 px margin). Use a slightly
+	// larger hit target so a finger does not have to be pixel-perfect.
+	return position.x() >= window->width() - 64 && position.y() <= 64;
+#else
+	Q_UNUSED(position);
+	return false;
+#endif
+}
+
 bool QmlBackend::prepareFrameForPresentation(ChiakiFfmpegFrame &frame, bool use_opengl_renderer)
 {
     if (!frame.frame)

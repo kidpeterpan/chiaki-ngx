@@ -6,6 +6,7 @@
 #include <QMutex>
 #include <QAtomicInteger>
 #include <QWindow>
+#include <QRectF>
 #include <QQuickWindow>
 #include <QLoggingCategory>
 #include <deque>
@@ -151,6 +152,9 @@ public:
     Q_INVOKABLE void requestOverlayUpdate();
     Q_INVOKABLE void setOverlayInteractionActive(bool active);
     Q_INVOKABLE void setStatsOverlayActive(bool active);
+    // Touch region occupied by the translator subtitle; touches starting there
+    // are routed to QML even while the game owns touch input (tap-to-lookup).
+    Q_INVOKABLE void setTranslatorTouchRegion(qreal x, qreal y, qreal width, qreal height, bool active);
     Q_INVOKABLE void noteLoadingTransitionComplete();
     Q_INVOKABLE void presentStartupWarmupFrame(unsigned width, unsigned height, bool hdr);
     void armVerbosePlaceboQuietWindow();
@@ -319,6 +323,10 @@ private:
     bool is_stream_window_adjustable = false;
     QAtomicInteger<int> dropped_frames_current = 0;
     bool going_full = false;
+    bool translator_touch_active = false;
+    bool translator_mouse_active = false;
+    QRectF translator_touch_region;
+    bool translator_touch_region_active = false;
     VideoMode video_mode = VideoMode::Normal;
     float zoom_factor = 0;
     VideoPreset video_preset = VideoPreset::HighQuality;

@@ -17,9 +17,32 @@ Item {
 
     property bool settingsOpen: false
     property bool dictionaryOpen: false
+    readonly property bool menuOpen: settingsOpen || Translator.roiSelectionActive || Translator.backlogVisible || dictionaryOpen
+
+    onMenuOpenChanged: {
+        if (menuOpen)
+            Chiaki.window.grabInput()
+        else
+            Chiaki.window.releaseInput()
+    }
+
+    Component.onDestruction: {
+        if (menuOpen && Chiaki.window)
+            Chiaki.window.releaseInput()
+        if (Chiaki.window)
+            Chiaki.window.setTranslatorTouchRegion(0, 0, 0, 0, false)
+    }
 
     function openDictionaryIfNeeded() {
         dictionaryOpen = Translator.dictionaryEntries.length > 0
+    }
+
+    function updateSubtitleTouchRegion() {
+        if (!Chiaki.window)
+            return
+        Chiaki.window.setTranslatorTouchRegion(
+            subtitle.x, subtitle.y, subtitle.width, subtitle.height,
+            subtitle.visible && Translator.enabled && Translator.overlayVisible)
     }
 
     Connections {
@@ -34,12 +57,19 @@ Item {
         function onSessionChanged() {
             if (Chiaki.session && Translator.enabled)
                 Translator.prepare()
+            if (!Chiaki.session) {
+                root.settingsOpen = false
+                root.dictionaryOpen = false
+                Translator.roiSelectionActive = false
+                Translator.backlogVisible = false
+            }
         }
     }
 
     Component.onCompleted: {
         if (Translator.enabled)
             Translator.prepare()
+        updateSubtitleTouchRegion()
     }
 
     Shortcut {
@@ -78,14 +108,11 @@ Item {
             font.bold: true
         }
 
-        MouseArea {
-            anchors.fill: parent
-            onClicked: {
+        TapHandler {
+            onTapped: {
                 root.settingsOpen = !root.settingsOpen
                 if (root.settingsOpen)
                     Translator.prepare()
-                else
-                    root.forceActiveFocus()
             }
         }
     }
@@ -129,6 +156,12 @@ Item {
         border.width: 1
         visible: Chiaki.session !== null && Translator.enabled && Translator.overlayVisible &&
                  Translator.overlayText.length > 0
+
+        onVisibleChanged: root.updateSubtitleTouchRegion()
+        onXChanged: root.updateSubtitleTouchRegion()
+        onYChanged: root.updateSubtitleTouchRegion()
+        onWidthChanged: root.updateSubtitleTouchRegion()
+        onHeightChanged: root.updateSubtitleTouchRegion()
 
         Column {
             id: subtitleColumn

@@ -2813,6 +2813,12 @@ void QmlMainWindow::setOverlayInteractionActive(bool active)
         scheduleUpdate(true, UpdateRequestReason::Unknown);
 }
 
+void QmlMainWindow::setTranslatorTouchRegion(qreal x, qreal y, qreal width, qreal height, bool active)
+{
+    translator_touch_region = QRectF(x, y, width, height);
+    translator_touch_region_active = active;
+}
+
 void QmlMainWindow::setStatsOverlayActive(bool active)
 {
     const bool previous = stats_overlay_visible;
@@ -7710,6 +7716,21 @@ bool QmlMainWindow::event(QEvent *event)
         if (static_cast<QMouseEvent*>(event)->source() != Qt::MouseEventNotSynthesized)
             return true;
         if (session && !grab_input) {
+            QMouseEvent *mouse_event = static_cast<QMouseEvent*>(event);
+            const bool translator_hit = backend &&
+                (backend->translatorAcceptsTouch(mouse_event->position()) ||
+                 (translator_touch_region_active && translator_touch_region.contains(mouse_event->position())));
+            if (event->type() == QEvent::MouseButtonPress && translator_hit) {
+                translator_mouse_active = true;
+                QGuiApplication::sendEvent(quick_window, event);
+                return true;
+            }
+            if (translator_mouse_active) {
+                QGuiApplication::sendEvent(quick_window, event);
+                if (event->type() == QEvent::MouseButtonRelease)
+                    translator_mouse_active = false;
+                return true;
+            }
             if (event->type() == QEvent::MouseMove)
                 session->HandleMouseMoveEvent(static_cast<QMouseEvent*>(event), width(), height());
             else if (event->type() == QEvent::MouseButtonPress)
@@ -7718,6 +7739,8 @@ bool QmlMainWindow::event(QEvent *event)
                 session->HandleMouseReleaseEvent(static_cast<QMouseEvent*>(event));
             return true;
         }
+        if (event->type() == QEvent::MouseButtonRelease)
+            translator_mouse_active = false;
         QGuiApplication::sendEvent(quick_window, event);
         break;
     case QEvent::MouseButtonDblClick:
@@ -7747,8 +7770,33 @@ bool QmlMainWindow::event(QEvent *event)
         QGuiApplication::sendEvent(quick_window, event);
         break;
     case QEvent::TouchBegin:
+        if (session && !grab_input && !static_cast<QTouchEvent*>(event)->points().isEmpty()) {
+            const QPointF touch_position =
+                static_cast<QTouchEvent*>(event)->points().first().position();
+            const bool translator_gear = backend && backend->translatorAcceptsTouch(touch_position);
+            const bool translator_subtitle = translator_touch_region_active &&
+                translator_touch_region.contains(touch_position);
+            if (translator_gear || translator_subtitle) {
+                translator_touch_active = true;
+                QGuiApplication::sendEvent(quick_window, event);
+                return true;
+            }
+        }
+        if (session && !grab_input) {
+            session->HandleTouchEvent(static_cast<QTouchEvent*>(event), width(), height());
+            return true;
+        }
+        QGuiApplication::sendEvent(quick_window, event);
+        break;
     case QEvent::TouchUpdate:
     case QEvent::TouchEnd:
+    case QEvent::TouchCancel:
+        if (translator_touch_active) {
+            QGuiApplication::sendEvent(quick_window, event);
+            if (event->type() == QEvent::TouchEnd || event->type() == QEvent::TouchCancel)
+                translator_touch_active = false;
+            return true;
+        }
         if (session && !grab_input) {
             session->HandleTouchEvent(static_cast<QTouchEvent*>(event), width(), height());
             return true;

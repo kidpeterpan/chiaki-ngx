@@ -7,6 +7,7 @@
 #include "qmlsettings.h"
 
 #include <QObject>
+#include <QPointF>
 #include <QMutex>
 #include <QThread>
 #include <QJSValue>
@@ -175,6 +176,9 @@ public:
 
     void profileChanged();
     bool prepareFrameForPresentation(ChiakiFfmpegFrame &frame, bool use_opengl_renderer);
+    // True when a touch starts on the translator gear. While translator menus
+    // are open, grabInput() routes all touches to QML instead.
+    bool translatorAcceptsTouch(const QPointF &position) const;
     void prepareStartupPresentation(bool present_warmup);
     void applyStartupWindowSizing();
 
