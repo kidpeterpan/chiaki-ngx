@@ -2,6 +2,7 @@
 #include "translator/preferences.h"
 
 #include <cstdio>
+#include <cstring>
 
 int main()
 {
@@ -36,5 +37,15 @@ int main()
 		return 1;
 	}
 	std::printf("PASS timing preference clamps\n");
+
+	// New installs default to the keyless backend; an install that relied on the old
+	// implicit Gemini default and saved a Gemini key keeps Gemini.
+	if (std::strcmp(translator::defaultBackendId(false), "google") != 0 ||
+			std::strcmp(translator::defaultBackendId(true), "gemini") != 0)
+	{
+		std::fprintf(stderr, "default backend selection failed\n");
+		return 1;
+	}
+	std::printf("PASS default backend selection\n");
 	return 0;
 }

@@ -90,7 +90,11 @@ TranslatorManager::TranslatorManager(QObject *parent) : QObject(parent)
 		QStringLiteral("inplace")).toString();
 	if (overlay_placement_ != QStringLiteral("bottom"))
 		overlay_placement_ = QStringLiteral("inplace");
-	backend_id_ = settings.value(QStringLiteral("translator/backend"), QStringLiteral("gemini")).toString();
+	if (settings.contains(QStringLiteral("translator/backend")))
+		backend_id_ = settings.value(QStringLiteral("translator/backend")).toString();
+	else
+		backend_id_ = QString::fromLatin1(translator::defaultBackendId(
+			!settings.value(QStringLiteral("translator/api_key/gemini")).toString().trimmed().isEmpty()));
 	ocr_provider_ = settings.value(QStringLiteral("translator/ocr"), QStringLiteral("paddle")).toString();
 	if (!ocrProviderIds().contains(ocr_provider_))
 		ocr_provider_ = QStringLiteral("paddle");

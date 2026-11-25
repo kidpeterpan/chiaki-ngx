@@ -8,6 +8,8 @@ import QtQuick.Window
 
 import org.streetpea.chiaking
 
+import "DeckNav.js" as DeckNav
+
 Item {
     id: root
 
@@ -20,6 +22,68 @@ Item {
     property bool autoHidden: false
     property string captureAction: ""
     readonly property bool menuOpen: settingsOpen || Translator.roiSelectionActive || Translator.backlogVisible || dictionaryOpen
+
+    TranslatorTheme { id: theme }
+
+    // Translator.apiKey() has no change signal; bumped after a key is saved so the
+    // setup checklist re-reads it.
+    property int keyRevision: 0
+    property Item focusBeforeSettings: null
+    readonly property var backendNames: ["Gemini Flash", "Google Translate (free)", "Google Cloud Translation",
+        "DeepL", "OpenCode Go", "OpenAI-compatible", "Offline NLLB"]
+    // "" when translation can run; otherwise what is missing: "ocr-key", "api-key" or "nllb".
+    readonly property string engineIssue: computeEngineIssue()
+
+    function computeEngineIssue() {
+        if (keyRevision < 0)
+            return ""
+        const ocr = Translator.ocrProvider
+        if ((ocr === "google-vision" || ocr === "gemini-vision") && Translator.ocrApiKey.length === 0)
+            return "ocr-key"
+        if (ocr === "gemini-vision")
+            return ""
+        const backend = Translator.backendId
+        if (backend === "google" || backend === "openai")
+            return ""
+        if (backend === "offline")
+            return Translator.nllbModelPath.length > 0 ? "" : "nllb"
+        return Translator.apiKey(backend).length > 0 ? "" : "api-key"
+    }
+
+    function backendName(backendId) {
+        const index = Translator.backendIds.indexOf(backendId)
+        return index >= 0 ? backendNames[index] : backendId
+    }
+
+    function engineStateText() {
+        if (engineIssue === "ocr-key")
+            return "Needs an OCR API key"
+        if (engineIssue === "api-key")
+            return "Needs a " + backendName(Translator.backendId) + " API key"
+        if (engineIssue === "nllb")
+            return "Needs the NLLB model folder"
+        return Translator.ocrProvider === "gemini-vision" ? "Gemini Vision" : backendName(Translator.backendId)
+    }
+
+    // "error", "ok" or "info", so the status line pairs its colour with an icon.
+    function statusKind(text) {
+        if (/^error|failed|missing|not found|requires|^add a|^set a|unsupported|not available/i.test(text))
+            return "error"
+        if (/ready|^ocr \d/i.test(text))
+            return "ok"
+        return "info"
+    }
+
+    function setTranslatorEnabled(enabled) {
+        Translator.enabled = enabled
+        if (enabled)
+            Translator.prepare()
+    }
+
+    function startRoiSelection() {
+        root.settingsOpen = false
+        Translator.roiSelectionActive = true
+    }
     readonly property var videoViewportRect: Translator.videoViewport(16.0 / 9.0,
         height > 0 ? width / height : 16.0 / 9.0,
         Chiaki.window ? Chiaki.window.videoMode : 0,
@@ -76,8 +140,22 @@ Item {
     }
 
     onSettingsOpenChanged: {
-        if (!settingsOpen && Translator.enabled && Chiaki.session)
+        if (settingsOpen) {
+            focusBeforeSettings = root.Window.activeFocusItem
+            Qt.callLater(settingsPanel.focusFirst)
+            return
+        }
+        // Text fields save on editingFinished; a field still being edited has not fired
+        // it yet, so fire it now to store the value before the settings are applied.
+        const focused = root.Window.activeFocusItem
+        if (focused && focused.deckNavigable === true && focused.editingFinished !== undefined)
+            focused.editingFinished()
+        if (Translator.enabled && Chiaki.session)
             Translator.applySettings()
+        // Hand focus back so the stream view's own keys keep working.
+        if (focusBeforeSettings && focusBeforeSettings.visible)
+            focusBeforeSettings.forceActiveFocus()
+        focusBeforeSettings = null
     }
 
     Component.onDestruction: {
@@ -212,13 +290,13 @@ Item {
     // not interfere with gameplay input.
     Rectangle {
         id: gear
-        width: 38
-        height: 38
-        radius: 19
+        width: theme.launcherSize
+        height: theme.launcherSize
+        radius: theme.launcherSize / 2
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.margins: 12
-        color: settingsOpen ? "#e6007acc" : "#99000000"
+        color: settingsOpen ? theme.accent : theme.launcher
         border.color: "#66ffffff"
         border.width: 1
         visible: Chiaki.session !== null
@@ -226,8 +304,8 @@ Item {
         Text {
             anchors.centerIn: parent
             text: "訳"
-            color: "white"
-            font.pixelSize: 18
+            color: theme.textStrong
+            font.pixelSize: 22
             font.bold: true
         }
 
@@ -575,420 +653,577 @@ Item {
         }
     }
 
-    // Settings card, drawn inside the stream viewport.
+    // Settings card, drawn inside the stream viewport. The header (title, setup
+    // checklist, section tabs) and the footer (status, actions) stay in place; only the
+    // selected section scrolls. Every control is a Deck* control, so the D-pad moves
+    // between them, left/right changes values, A presses, B closes, L1/R1 switch sections.
     Rectangle {
         id: settingsPanel
+
+        readonly property bool deckNavScope: true
+        readonly property var sectionNames: ["Setup", "Tuning", "Appearance", "Advanced"]
+        property int section: 0
+
+        function focusControl(item) {
+            item.forceActiveFocus(Qt.TabFocusReason)
+            ensureVisible(item)
+        }
+
+        function ensureVisible(item) {
+            let inside = false
+            for (let node = item; node; node = node.parent) {
+                if (node === sectionColumn) {
+                    inside = true
+                    break
+                }
+            }
+            if (!inside)
+                return
+            const top = item.mapToItem(sectionColumn, 0, 0).y - theme.gap
+            const bottom = top + item.height + 2 * theme.gap
+            const maxY = Math.max(0, sectionFlick.contentHeight - sectionFlick.height)
+            if (top < sectionFlick.contentY)
+                sectionFlick.contentY = Math.max(0, top)
+            else if (bottom > sectionFlick.contentY + sectionFlick.height)
+                sectionFlick.contentY = Math.min(maxY, bottom - sectionFlick.height)
+        }
+
+        // Opens on the action that unblocks translation, if anything is missing.
+        function focusFirst() {
+            if (!visible)
+                return
+            if (engineFixButton.visible) {
+                focusControl(engineFixButton)
+                return
+            }
+            const items = DeckNav.navigableItems(settingsPanel)
+            if (items.length > 0)
+                focusControl(items[0])
+        }
+
+        function cycleSection(step) {
+            section = (section + step + sectionNames.length) % sectionNames.length
+            sectionFlick.contentY = 0
+            const tab = sectionTabs.itemAt(section)
+            if (tab)
+                focusControl(tab)
+        }
+
+        function showSetupField(field) {
+            section = 0
+            Qt.callLater(function() {
+                if (field.visible)
+                    focusControl(field)
+            })
+        }
+
         visible: root.settingsOpen && Chiaki.session !== null
         anchors.centerIn: parent
-        width: Math.min(parent.width * 0.72, 720)
-        height: Math.min(settingsColumn.implicitHeight + 32, parent.height * 0.86)
-        radius: 12
-        color: "#f00e1014"
-        border.color: "#55ffffff"
+        width: Math.min(parent.width * 0.9, 820)
+        height: Math.min(parent.height * 0.92, panelLayout.implicitHeight + 2 * panelLayout.anchors.margins)
+        radius: theme.radius
+        color: theme.panel
+        border.color: theme.panelBorder
         border.width: 1
 
-        ScrollView {
-            anchors.fill: parent
-            anchors.margins: 10
-            clip: true
-            ScrollBar.vertical.policy: ScrollBar.AsNeeded
+        Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Escape)
+                root.settingsOpen = false
+            else if (event.key === Qt.Key_PageUp)
+                cycleSection(-1)
+            else if (event.key === Qt.Key_PageDown)
+                cycleSection(1)
+            else
+                return
+            event.accepted = true
+        }
 
-            Column {
-                id: settingsColumn
-                width: settingsPanel.width - 40
-                spacing: 10
+        ColumnLayout {
+            id: panelLayout
+            anchors.fill: parent
+            anchors.margins: theme.gap + 6
+            spacing: theme.gap
 
             Text {
                 text: "Subtitle translator"
-                color: "white"
-                font.pixelSize: 22
+                color: theme.textStrong
+                font.pixelSize: theme.titleSize
                 font.bold: true
             }
 
+            // Setup checklist: what translation needs, with the button that fixes each.
             RowLayout {
-                width: parent.width
-                spacing: 12
-                Text { text: "Enabled"; color: "#dddddd"; font.pixelSize: 14 }
-                Item { Layout.fillWidth: true }
-                Switch {
-                    checked: Translator.enabled
-                    onToggled: {
-                        Translator.enabled = checked
-                        if (checked)
-                            Translator.prepare()
+                Layout.fillWidth: true
+                spacing: theme.gap
+
+                TranslatorChecklistItem {
+                    title: "Translator"
+                    ok: Translator.enabled
+                    stateText: Translator.enabled ? "On" : "Off"
+                    DeckButton {
+                        text: Translator.enabled ? "Turn off" : "Turn on"
+                        onClicked: root.setTranslatorEnabled(!Translator.enabled)
+                    }
+                }
+
+                TranslatorChecklistItem {
+                    title: "Translation engine"
+                    ok: root.engineIssue.length === 0
+                    stateText: root.engineStateText()
+                    DeckButton {
+                        id: engineFixButton
+                        visible: root.engineIssue.length > 0
+                        text: root.engineIssue === "nllb" ? "Set folder" : "Add key"
+                        onClicked: settingsPanel.showSetupField(root.engineIssue === "ocr-key" ? ocrKeyField
+                            : root.engineIssue === "nllb" ? nllbField : apiKeyField)
+                    }
+                    DeckButton {
+                        visible: root.engineIssue === "api-key"
+                        text: "Use free Google"
+                        onClicked: Translator.backendId = "google"
+                    }
+                    DeckButton {
+                        visible: root.engineIssue.length === 0
+                        text: "Change"
+                        onClicked: settingsPanel.showSetupField(backendBox)
+                    }
+                }
+
+                TranslatorChecklistItem {
+                    title: "Subtitle area"
+                    stateText: "Preset: " + (Translator.presetName.length > 0 ? Translator.presetName : "default")
+                    DeckButton {
+                        text: "Select area"
+                        onClicked: root.startRoiSelection()
                     }
                 }
             }
 
             RowLayout {
-                width: parent.width
-                spacing: 8
-                Text { text: "OCR"; color: "#dddddd"; font.pixelSize: 14 }
-                ComboBox {
-                    id: ocrBox
-                    Layout.fillWidth: true
-                    model: ["PaddleOCR (PP-OCRv3 Japanese)", "RapidOCR (PP-OCRv5)", "Google Cloud Vision", "Gemini Vision (OCR + translate)", "OCR.space", "Chrome Screen AI (Linux)"]
-                    currentIndex: Math.max(0, Translator.ocrProviderIds.indexOf(Translator.ocrProvider))
-                    onActivated: Translator.ocrProvider = Translator.ocrProviderIds[index]
-                }
-            }
+                Layout.fillWidth: true
+                spacing: 6
 
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                visible: Translator.ocrProvider === "google-vision" || Translator.ocrProvider === "gemini-vision" || Translator.ocrProvider === "ocrspace"
-                Text { text: "OCR key"; color: "#dddddd"; font.pixelSize: 14 }
-                TextField {
-                    id: ocrKeyField
-                    Layout.fillWidth: true
-                    placeholderText: Translator.ocrProvider === "ocrspace" ? "helloworld (free)" : "Google / Gemini API key"
-                    echoMode: TextInput.Password
-                    text: Translator.ocrApiKey
-                }
-                Button {
-                    text: "Save"
-                    onClicked: {
-                        Translator.setOcrApiKey(ocrKeyField.text)
-                        Translator.applySettings()
+                Repeater {
+                    id: sectionTabs
+                    model: settingsPanel.sectionNames
+
+                    DeckButton {
+                        required property int index
+                        required property string modelData
+                        // Moving up into the tab row lands on the selected tab.
+                        readonly property bool deckPreferred: settingsPanel.section === index
+                        text: modelData
+                        highlighted: settingsPanel.section === index
+                        flat: settingsPanel.section !== index
+                        onClicked: {
+                            settingsPanel.section = index
+                            sectionFlick.contentY = 0
+                        }
                     }
                 }
             }
 
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                Text { text: "Backend"; color: "#dddddd"; font.pixelSize: 14 }
-                ComboBox {
-                    id: backendBox
-                    Layout.fillWidth: true
-                    model: ["Gemini Flash", "Google Translate (free)", "Google Cloud Translation",
-                            "DeepL", "OpenCode Go", "OpenAI-compatible", "Offline NLLB"]
-                    currentIndex: Math.max(0, Translator.backendIds.indexOf(Translator.backendId))
-                    onActivated: Translator.backendId = Translator.backendIds[index]
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: theme.divider
+            }
+
+            Flickable {
+                id: sectionFlick
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredHeight: sectionColumn.implicitHeight
+                Layout.minimumHeight: Math.min(sectionColumn.implicitHeight, 3 * theme.rowHeight)
+                contentWidth: width
+                contentHeight: sectionColumn.implicitHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                Column {
+                    id: sectionColumn
+                    width: sectionFlick.width - 14
+                    spacing: 6
+
+                    // Setup: what to read, how to translate it, and where the subtitles are.
+                    Column {
+                        width: parent.width
+                        spacing: 6
+                        visible: settingsPanel.section === 0
+
+                        TranslatorRow {
+                            label: "OCR"
+                            DeckComboBox {
+                                id: ocrBox
+                                Layout.fillWidth: true
+                                model: ["PaddleOCR (PP-OCRv3 Japanese)", "RapidOCR (PP-OCRv5)", "Google Cloud Vision", "Gemini Vision (OCR + translate)", "OCR.space", "Chrome Screen AI (Linux)"]
+                                currentIndex: Math.max(0, Translator.ocrProviderIds.indexOf(Translator.ocrProvider))
+                                onActivated: index => Translator.ocrProvider = Translator.ocrProviderIds[index]
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "OCR key"
+                            visible: Translator.ocrProvider === "google-vision" || Translator.ocrProvider === "gemini-vision" || Translator.ocrProvider === "ocrspace"
+                            DeckTextField {
+                                id: ocrKeyField
+                                Layout.fillWidth: true
+                                placeholderText: Translator.ocrProvider === "ocrspace" ? "helloworld (free)" : "Google / Gemini API key"
+                                echoMode: TextInput.Password
+                                text: Translator.ocrApiKey
+                                onEditingFinished: Translator.setOcrApiKey(text)
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Translation"
+                            DeckComboBox {
+                                id: backendBox
+                                Layout.fillWidth: true
+                                model: root.backendNames
+                                currentIndex: Math.max(0, Translator.backendIds.indexOf(Translator.backendId))
+                                onActivated: index => Translator.backendId = Translator.backendIds[index]
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "API key"
+                            visible: Translator.backendId !== "offline" && Translator.backendId !== "google"
+                            hint: "Saved when you leave the field."
+                            DeckTextField {
+                                id: apiKeyField
+                                Layout.fillWidth: true
+                                placeholderText: "stored on this device"
+                                echoMode: TextInput.Password
+                                text: Translator.apiKey(Translator.backendId)
+                                onEditingFinished: {
+                                    Translator.setApiKey(Translator.backendId, text)
+                                    root.keyRevision++
+                                }
+                            }
+                        }
+
+                        Text {
+                            width: parent.width
+                            visible: Translator.backendId === "google"
+                            text: "Google Translate (free) needs no key. Gemini or DeepL usually translate better and need a key."
+                            color: theme.textMuted
+                            font.pixelSize: theme.captionSize
+                            wrapMode: Text.Wrap
+                        }
+
+                        TranslatorRow {
+                            label: "Base URL"
+                            visible: Translator.backendId === "opencode-go" || Translator.backendId === "openai"
+                            DeckTextField {
+                                Layout.fillWidth: true
+                                placeholderText: Translator.backendId === "opencode-go"
+                                    ? "https://opencode.ai/inference/go/openai/v1 (default)"
+                                    : "https://host/v1"
+                                text: Translator.baseUrl(Translator.backendId)
+                                onEditingFinished: Translator.setBaseUrl(Translator.backendId, text)
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Model"
+                            visible: Translator.backendId === "opencode-go" || Translator.backendId === "openai"
+                            DeckTextField {
+                                Layout.fillWidth: true
+                                placeholderText: "flash-class chat model"
+                                text: Translator.model(Translator.backendId)
+                                onEditingFinished: Translator.setModel(Translator.backendId, text)
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "NLLB model folder"
+                            visible: Translator.backendId === "offline"
+                            hint: "Offline NLLB needs a build with CTranslate2."
+                            DeckTextField {
+                                id: nllbField
+                                Layout.fillWidth: true
+                                placeholderText: "/path/to/nllb-200-distilled-600M-ct2-int8"
+                                text: Translator.nllbModelPath
+                                onEditingFinished: Translator.setNllbModelPath(text)
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Translate into"
+                            DeckComboBox {
+                                Layout.fillWidth: true
+                                model: ["Thai", "English"]
+                                currentIndex: Translator.targetLanguage === "en" ? 1 : 0
+                                onActivated: index => Translator.targetLanguage = index === 1 ? "en" : "th"
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Area preset"
+                            hint: "Saves the current subtitle area under this name."
+                            DeckTextField {
+                                id: presetField
+                                Layout.fillWidth: true
+                                text: Translator.presetName
+                                placeholderText: "preset name"
+                            }
+                            DeckButton {
+                                text: "Save preset"
+                                onClicked: Translator.savePreset(presetField.text)
+                            }
+                        }
+                    }
+
+                    // Tuning: when and how the subtitle area is read.
+                    Column {
+                        width: parent.width
+                        spacing: 6
+                        visible: settingsPanel.section === 1
+
+                        TranslatorRow {
+                            label: "Image cleanup"
+                            hint: "Black & white helps when subtitles sit on a busy or see-through background."
+                            DeckComboBox {
+                                readonly property var modes: ["contrast", "threshold", "none"]
+                                Layout.fillWidth: true
+                                model: ["Contrast boost (default)", "Black & white", "None"]
+                                currentIndex: Math.max(0, modes.indexOf(Translator.preprocess))
+                                onActivated: index => Translator.setPreprocess(modes[index])
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Scan interval (ms)"
+                            hint: "How often the subtitle area is checked. Lower reacts faster and uses more CPU."
+                            DeckSpinBox {
+                                from: 50
+                                to: 2000
+                                stepSize: 50
+                                value: Translator.scanIntervalMs
+                                onValueModified: Translator.scanIntervalMs = value
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Stable time (ms)"
+                            hint: "How long text must stay still before it is translated."
+                            DeckSpinBox {
+                                from: 100
+                                to: 5000
+                                stepSize: 50
+                                value: Translator.stableMs
+                                onValueModified: Translator.stableMs = value
+                            }
+                        }
+                    }
+
+                    // Appearance: where and how translations are drawn.
+                    Column {
+                        width: parent.width
+                        spacing: 6
+                        visible: settingsPanel.section === 2
+
+                        TranslatorRow {
+                            label: "Placement"
+                            DeckComboBox {
+                                Layout.fillWidth: true
+                                model: ["Over the original text", "Bottom center"]
+                                currentIndex: Translator.overlayPlacement === "bottom" ? 1 : 0
+                                onActivated: index => Translator.overlayPlacement = index === 1 ? "bottom" : "inplace"
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Hide after (s)"
+                            hint: "0 = never hide."
+                            DeckSpinBox {
+                                from: 0
+                                to: 60
+                                value: Translator.overlayAutoHideSeconds
+                                onValueModified: Translator.overlayAutoHideSeconds = value
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Font"
+                            DeckComboBox {
+                                Layout.fillWidth: true
+                                model: ["System default"].concat(Qt.fontFamilies())
+                                currentIndex: Translator.overlayFontFamily.length > 0
+                                    ? Math.max(0, model.indexOf(Translator.overlayFontFamily)) : 0
+                                onActivated: index => Translator.overlayFontFamily = index === 0 ? "" : model[index]
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Font size"
+                            hint: "0 = fit the subtitle box."
+                            DeckSpinBox {
+                                from: 0
+                                to: 72
+                                value: Translator.overlayFontSize
+                                onValueModified: Translator.overlayFontSize = value
+                            }
+                        }
+                    }
+
+                    // Advanced: controller help and keyboard hotkeys for desktop use.
+                    Column {
+                        width: parent.width
+                        spacing: 6
+                        visible: settingsPanel.section === 3
+
+                        Text {
+                            width: parent.width
+                            text: "Steam Deck: L4 translate now · R4 show/hide subtitles · L5 backlog · R5 select area.\n" +
+                                  "Tap a source line to look a word up in JMdict."
+                            color: theme.textMuted
+                            font.pixelSize: theme.captionSize
+                            wrapMode: Text.Wrap
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: "Keyboard hotkeys (desktop). Use Set and press the keys, or type a combination such as Ctrl+Shift+T. Leave empty to disable."
+                            color: theme.text
+                            font.pixelSize: theme.captionSize
+                            wrapMode: Text.Wrap
+                        }
+
+                        TranslatorRow {
+                            label: "Live on/off"
+                            DeckTextField {
+                                id: shortcutEnableField
+                                Layout.fillWidth: true
+                                placeholderText: "F11"
+                                text: Translator.shortcutEnable
+                                onEditingFinished: root.saveHotkeys()
+                            }
+                            DeckButton {
+                                text: "Set"
+                                onClicked: { root.captureAction = "enable"; shortcutCapture.forceActiveFocus() }
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Translate now"
+                            DeckTextField {
+                                id: shortcutTranslateField
+                                Layout.fillWidth: true
+                                placeholderText: "F13"
+                                text: Translator.shortcutTranslate
+                                onEditingFinished: root.saveHotkeys()
+                            }
+                            DeckButton {
+                                text: "Set"
+                                onClicked: { root.captureAction = "translate"; shortcutCapture.forceActiveFocus() }
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Show/hide subtitles"
+                            DeckTextField {
+                                id: shortcutOverlayField
+                                Layout.fillWidth: true
+                                placeholderText: "F14"
+                                text: Translator.shortcutOverlay
+                                onEditingFinished: root.saveHotkeys()
+                            }
+                            DeckButton {
+                                text: "Set"
+                                onClicked: { root.captureAction = "overlay"; shortcutCapture.forceActiveFocus() }
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Backlog"
+                            DeckTextField {
+                                id: shortcutBacklogField
+                                Layout.fillWidth: true
+                                placeholderText: "F15"
+                                text: Translator.shortcutBacklog
+                                onEditingFinished: root.saveHotkeys()
+                            }
+                            DeckButton {
+                                text: "Set"
+                                onClicked: { root.captureAction = "backlog"; shortcutCapture.forceActiveFocus() }
+                            }
+                        }
+
+                        TranslatorRow {
+                            label: "Open settings"
+                            DeckTextField {
+                                id: shortcutSettingsField
+                                Layout.fillWidth: true
+                                placeholderText: "F12"
+                                text: Translator.shortcutSettings
+                                onEditingFinished: root.saveHotkeys()
+                            }
+                            DeckButton {
+                                text: "Set"
+                                onClicked: { root.captureAction = "settings"; shortcutCapture.forceActiveFocus() }
+                            }
+                        }
+
+                        DeckButton {
+                            text: "Reset hotkeys"
+                            onClicked: {
+                                Translator.resetShortcuts()
+                                shortcutEnableField.text = Translator.shortcutEnable
+                                shortcutTranslateField.text = Translator.shortcutTranslate
+                                shortcutOverlayField.text = Translator.shortcutOverlay
+                                shortcutBacklogField.text = Translator.shortcutBacklog
+                                shortcutSettingsField.text = Translator.shortcutSettings
+                            }
+                        }
+                    }
                 }
             }
 
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                visible: Translator.backendId !== "offline" && Translator.backendId !== "google"
-                Text { text: "API key"; color: "#dddddd"; font.pixelSize: 14 }
-                TextField {
-                    id: apiKeyField
-                    Layout.fillWidth: true
-                    placeholderText: "stored in QSettings"
-                    echoMode: TextInput.Password
-                    text: Translator.apiKey(Translator.backendId)
-                }
-                Button {
-                    text: "Save"
-                    onClicked: {
-                        Translator.setApiKey(Translator.backendId, apiKeyField.text)
-                        Translator.applySettings()
-                    }
-                }
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: theme.divider
             }
 
             Text {
-                width: parent.width
-                visible: Translator.backendId === "google"
-                text: "Google Translate (free, no API key). Google Cloud needs a key and the Cloud Translation API enabled."
-                color: "#bbbbbb"
-                font.pixelSize: 12
+                readonly property string kind: root.statusKind(Translator.statusText)
+                Layout.fillWidth: true
+                visible: Translator.statusText.length > 0
+                text: (kind === "error" ? "⚠ " : kind === "ok" ? "✓ " : "• ") + Translator.statusText +
+                      (Translator.statusText === "No text in ROI" ? " — try Select area or Translate now" : "")
+                color: kind === "error" ? theme.error : kind === "ok" ? theme.ok : theme.text
+                font.pixelSize: theme.captionSize + 1
                 wrapMode: Text.Wrap
             }
 
             RowLayout {
-                width: parent.width
-                spacing: 8
-                visible: Translator.backendId === "opencode-go" || Translator.backendId === "openai"
-                Text { text: "Base URL"; color: "#dddddd"; font.pixelSize: 14 }
-                TextField {
-                    id: baseUrlField
-                    Layout.fillWidth: true
-                    placeholderText: Translator.backendId === "opencode-go"
-                        ? "https://opencode.ai/inference/go/openai/v1 (default)"
-                        : "https://host/v1"
-                    text: Translator.baseUrl(Translator.backendId)
-                }
-                Button {
-                    text: "Save"
-                    onClicked: {
-                        Translator.setBaseUrl(Translator.backendId, baseUrlField.text)
-                        Translator.applySettings()
-                    }
-                }
-            }
+                Layout.fillWidth: true
+                spacing: theme.gap
 
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                visible: Translator.backendId === "opencode-go" || Translator.backendId === "openai"
-                Text { text: "Model"; color: "#dddddd"; font.pixelSize: 14 }
-                TextField {
-                    id: modelField
-                    Layout.fillWidth: true
-                    placeholderText: "flash-class chat model"
-                    text: Translator.model(Translator.backendId)
-                }
-                Button {
-                    text: "Save"
-                    onClicked: {
-                        Translator.setModel(Translator.backendId, modelField.text)
-                        Translator.applySettings()
-                    }
-                }
-            }
-
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                visible: Translator.backendId === "offline"
-                Text { text: "NLLB model dir"; color: "#dddddd"; font.pixelSize: 14 }
-                TextField {
-                    id: nllbField
-                    Layout.fillWidth: true
-                    placeholderText: "/path/to/nllb-200-distilled-600M-ct2-int8"
-                    text: Translator.nllbModelPath
-                }
-                Button {
-                    text: "Save"
-                    onClicked: {
-                        Translator.setNllbModelPath(nllbField.text)
-                        Translator.applySettings()
-                    }
-                }
-            }
-
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                Text { text: "Target"; color: "#dddddd"; font.pixelSize: 14 }
-                ComboBox {
-                    model: ["Thai (th)", "English (en)"]
-                    currentIndex: Translator.targetLanguage === "en" ? 1 : 0
-                    onActivated: Translator.targetLanguage = index === 1 ? "en" : "th"
-                }
-                Text { text: "Preprocess"; color: "#dddddd"; font.pixelSize: 14 }
-                ComboBox {
-                    model: ["contrast", "threshold", "none"]
-                    currentIndex: Math.max(0, ["contrast", "threshold", "none"].indexOf(Translator.preprocess))
-                    onActivated: Translator.setPreprocess(["contrast", "threshold", "none"][index])
-                }
-            }
-
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                Text { text: "Overlay"; color: "#dddddd"; font.pixelSize: 14 }
-                ComboBox {
-                    Layout.fillWidth: true
-                    model: ["In-place (over source text)", "Bottom center"]
-                    currentIndex: Translator.overlayPlacement === "bottom" ? 1 : 0
-                    onActivated: Translator.overlayPlacement = index === 1 ? "bottom" : "inplace"
-                }
-            }
-
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                Text { text: "Hide after (s)"; color: "#dddddd"; font.pixelSize: 13 }
-                SpinBox {
-                    from: 0
-                    to: 60
-                    value: Translator.overlayAutoHideSeconds
-                    onValueModified: Translator.overlayAutoHideSeconds = value
-                }
-                Text { text: "Scan interval (ms)"; color: "#dddddd"; font.pixelSize: 13 }
-                SpinBox {
-                    from: 50
-                    to: 2000
-                    stepSize: 50
-                    value: Translator.scanIntervalMs
-                    onValueModified: Translator.scanIntervalMs = value
-                }
-            }
-
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                Text { text: "Stable time (ms)"; color: "#dddddd"; font.pixelSize: 13 }
-                SpinBox {
-                    from: 100
-                    to: 5000
-                    stepSize: 50
-                    value: Translator.stableMs
-                    onValueModified: Translator.stableMs = value
-                }
-                Text { text: "0 = overlay never auto-hides"; color: "#99ffffff"; font.pixelSize: 11 }
-                Item { Layout.fillWidth: true }
-            }
-
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                Text { text: "Overlay font"; color: "#dddddd"; font.pixelSize: 13 }
-                ComboBox {
-                    Layout.fillWidth: true
-                    model: ["System default"].concat(Qt.fontFamilies())
-                    currentIndex: Translator.overlayFontFamily.length > 0
-                        ? Math.max(0, model.indexOf(Translator.overlayFontFamily)) : 0
-                    onActivated: Translator.overlayFontFamily = index === 0 ? "" : model[index]
-                }
-                Text { text: "Size"; color: "#dddddd"; font.pixelSize: 13 }
-                SpinBox {
-                    from: 0
-                    to: 72
-                    value: Translator.overlayFontSize
-                    onValueModified: Translator.overlayFontSize = value
-                }
-            }
-
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                Text { text: "ROI preset"; color: "#dddddd"; font.pixelSize: 14 }
-                TextField {
-                    id: presetField
-                    Layout.fillWidth: true
-                    text: Translator.presetName
-                    placeholderText: "preset name"
-                }
-                Button {
-                    text: "Save"
-                    onClicked: Translator.savePreset(presetField.text)
-                }
-                Button {
-                    text: "Select ROI"
-                    onClicked: {
-                        root.settingsOpen = false
-                        Translator.roiSelectionActive = true
-                    }
-                }
-            }
-
-            Text {
-                width: parent.width
-                text: "L4 translate now · R4 show/hide subtitles · L5 backlog · R5 select ROI\n" +
-                      "Tap a source line to look a word up in JMdict. Offline NLLB requires a separate build."
-                color: "#99ffffff"
-                font.pixelSize: 11
-                wrapMode: Text.Wrap
-            }
-
-            Text {
-                width: parent.width
-                text: "Hotkeys — combinations such as F13 or Ctrl+Shift+T; leave empty to disable"
-                color: "#dddddd"
-                font.pixelSize: 13
-                font.bold: true
-                wrapMode: Text.Wrap
-            }
-
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                Text { text: "Live"; color: "#dddddd"; font.pixelSize: 13 }
-                TextField {
-                    id: shortcutEnableField
-                    Layout.fillWidth: true
-                    placeholderText: "F11"
-                    text: Translator.shortcutEnable
-                }
-                Button { text: "Set"; onClicked: { root.captureAction = "enable"; shortcutCapture.forceActiveFocus() } }
-                Text { text: "Translate"; color: "#dddddd"; font.pixelSize: 13 }
-                TextField {
-                    id: shortcutTranslateField
-                    Layout.fillWidth: true
-                    placeholderText: "F13"
-                    text: Translator.shortcutTranslate
-                }
-                Button { text: "Set"; onClicked: { root.captureAction = "translate"; shortcutCapture.forceActiveFocus() } }
-            }
-
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                Text { text: "Overlay"; color: "#dddddd"; font.pixelSize: 13 }
-                TextField {
-                    id: shortcutOverlayField
-                    Layout.fillWidth: true
-                    placeholderText: "F14"
-                    text: Translator.shortcutOverlay
-                }
-                Button { text: "Set"; onClicked: { root.captureAction = "overlay"; shortcutCapture.forceActiveFocus() } }
-                Text { text: "Backlog"; color: "#dddddd"; font.pixelSize: 13 }
-                TextField {
-                    id: shortcutBacklogField
-                    Layout.fillWidth: true
-                    placeholderText: "F15"
-                    text: Translator.shortcutBacklog
-                }
-                Button { text: "Set"; onClicked: { root.captureAction = "backlog"; shortcutCapture.forceActiveFocus() } }
-            }
-
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                Text { text: "Settings"; color: "#dddddd"; font.pixelSize: 13 }
-                TextField {
-                    id: shortcutSettingsField
-                    Layout.fillWidth: true
-                    placeholderText: "F12"
-                    text: Translator.shortcutSettings
-                }
-                Button { text: "Set"; onClicked: { root.captureAction = "settings"; shortcutCapture.forceActiveFocus() } }
-                Item { Layout.fillWidth: true }
-            }
-
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                Button {
-                    text: "Save hotkeys"
-                    onClicked: root.saveHotkeys()
-                }
-                Button {
-                    text: "Reset hotkeys"
-                    onClicked: {
-                        Translator.resetShortcuts()
-                        shortcutEnableField.text = Translator.shortcutEnable
-                        shortcutTranslateField.text = Translator.shortcutTranslate
-                        shortcutOverlayField.text = Translator.shortcutOverlay
-                        shortcutBacklogField.text = Translator.shortcutBacklog
-                        shortcutSettingsField.text = Translator.shortcutSettings
-                    }
-                }
-                Item { Layout.fillWidth: true }
-            }
-
-            Text {
-                width: parent.width
-                text: Translator.statusText
-                color: "#ffd27a"
-                font.pixelSize: 12
-                wrapMode: Text.Wrap
-            }
-
-            Item { height: 1; width: 1 }
-
-            RowLayout {
-                width: parent.width
-                spacing: 8
-                Button {
+                DeckButton {
                     text: "Translate now"
                     onClicked: Translator.manualTranslate()
                 }
-                Button {
+                DeckButton {
                     text: Translator.overlayVisible ? "Hide subtitles" : "Show subtitles"
                     onClicked: Translator.toggleOverlay()
                 }
                 Item { Layout.fillWidth: true }
-                Button {
+                DeckButton {
                     text: "Close"
                     onClicked: root.settingsOpen = false
                 }
             }
+
+            Text {
+                Layout.fillWidth: true
+                text: "Changes apply when you close this panel · D-pad move · ←/→ change · A select · B close · L1/R1 section"
+                color: theme.textMuted
+                font.pixelSize: theme.captionSize
+                wrapMode: Text.Wrap
             }
         }
     }

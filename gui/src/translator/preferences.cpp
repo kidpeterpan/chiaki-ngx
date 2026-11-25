@@ -24,4 +24,9 @@ int clampOverlayFontSize(int pixels)
 	return pixels < 0 ? 0 : (pixels > 72 ? 72 : pixels);
 }
 
+const char *defaultBackendId(bool has_gemini_key)
+{
+	return has_gemini_key ? "gemini" : "google";
+}
+
 } // namespace translator

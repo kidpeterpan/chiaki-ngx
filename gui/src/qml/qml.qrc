@@ -29,5 +29,14 @@
     <file>controls/Slider.qml</file>
     <file>controls/TextField.qml</file>
     <file>translator/TranslatorOverlay.qml</file>
+    <file>translator/TranslatorTheme.qml</file>
+    <file>translator/TranslatorRow.qml</file>
+    <file>translator/TranslatorChecklistItem.qml</file>
+    <file>translator/DeckNav.js</file>
+    <file>translator/DeckFocusRing.qml</file>
+    <file>translator/DeckButton.qml</file>
+    <file>translator/DeckComboBox.qml</file>
+    <file>translator/DeckSpinBox.qml</file>
+    <file>translator/DeckTextField.qml</file>
   </qresource>
 </RCC>
