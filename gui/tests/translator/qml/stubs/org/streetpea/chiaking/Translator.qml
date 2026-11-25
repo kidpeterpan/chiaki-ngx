@@ -5,6 +5,9 @@ import QtQuick
 
 QtObject {
     property bool enabled: false
+    property bool liveTranslation: true
+    property bool overlayShowSource: true
+    property int overlayBoxOpacity: 80
     property bool prepared: false
     property bool roiSelectionActive: false
     property bool backlogVisible: false
@@ -58,6 +61,13 @@ QtObject {
     function toggleOverlay() { overlayVisible = !overlayVisible }
     function toggleBacklog() { backlogVisible = !backlogVisible }
     function toggleEnabled() { enabled = !enabled }
+    // Mirrors TranslatorManager: LIVE -> MANUAL; MANUAL or OFF -> LIVE (turning the translator on).
+    function toggleLive() {
+        const live = !(enabled && liveTranslation)
+        liveTranslation = live
+        if (live)
+            enabled = true
+    }
     function clearBacklog() {}
     function resetShortcuts() {}
     function setShortcuts(a, b, c, d, e) { return true }

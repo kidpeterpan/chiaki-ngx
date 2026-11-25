@@ -32,6 +32,10 @@ Item {
             }
             overlay.settingsOpen = false
             Translator.enabled = false
+            Translator.liveTranslation = true
+            Translator.overlayShowSource = true
+            Translator.overlayBoxOpacity = 80
+            Translator.overlayRegions = []
             Translator.backendId = "google"
             Translator.ocrProvider = "paddle"
             Translator.keys = ({})
@@ -130,6 +134,68 @@ Item {
             wait(400)
             verify(!combo.popup.visible, "A on an option closes the list")
             compare(Translator.preprocess, "threshold")
+        }
+
+        // OFF with Live switched off: tapping the badge must turn on both, not just the translator.
+        function test_live_badge_turns_translator_on() {
+            Translator.liveTranslation = false
+            const badge = findChild(overlay, "liveBadge")
+            verify(badge, "live badge exists")
+            compare(findChild(badge, "liveBadgeText").text, "OFF")
+            mouseClick(badge)
+            verify(Translator.enabled)
+            verify(Translator.liveTranslation)
+            compare(findChild(badge, "liveBadgeText").text, "LIVE")
+        }
+
+        function test_live_off_shows_manual_badge() {
+            Translator.enabled = true
+            Translator.liveTranslation = false
+            const badge = findChild(overlay, "liveBadge")
+            compare(findChild(badge, "liveBadgeText").text, "MANUAL")
+            mouseClick(badge)
+            verify(Translator.liveTranslation)
+            compare(findChild(badge, "liveBadgeText").text, "LIVE")
+        }
+
+        function test_setup_live_row_switches_live() {
+            Translator.enabled = true
+            openPanel()
+            keyClick(Qt.Key_Down)
+            keyClick(Qt.Key_Down)
+            const combo = focused()
+            verify(combo.model !== undefined, "Down from the Setup tab reaches the first Setup row")
+            compare(combo.currentText, "On")
+            keyClick(Qt.Key_Right)
+            verify(!Translator.liveTranslation)
+            verify(Translator.enabled, "Live off keeps the translator on")
+        }
+
+        function test_hidden_source_gives_translation_the_box() {
+            Translator.enabled = true
+            Translator.overlayRegions = [{ x: 0.1, y: 0.6, width: 0.8, height: 0.25,
+                                           source: "こんにちは", translation: "สวัสดี" }]
+            wait(20)
+            const block = findChild(overlay, "regionBlock")
+            const source = findChild(block, "regionSource")
+            const translation = findChild(block, "regionTranslation")
+            verify(source.visible)
+            verify(translation.height < block.height - 16)
+            Translator.overlayShowSource = false
+            wait(20)
+            verify(!source.visible)
+            compare(translation.height, block.height - 16)
+        }
+
+        function test_box_opacity_sets_background_alpha() {
+            Translator.overlayRegions = [{ x: 0.1, y: 0.6, width: 0.8, height: 0.25,
+                                           source: "こんにちは", translation: "สวัสดี" }]
+            wait(20)
+            fuzzyCompare(findChild(overlay, "subtitleBox").color.a, 0.8, 0.01)
+            Translator.overlayBoxOpacity = 40
+            wait(20)
+            fuzzyCompare(findChild(overlay, "subtitleBox").color.a, 0.4, 0.01)
+            fuzzyCompare(findChild(overlay, "regionBlock").color.a, 0.4, 0.01)
         }
 
         function test_use_free_google_clears_missing_key() {
