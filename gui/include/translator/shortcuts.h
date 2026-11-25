@@ -3,6 +3,7 @@
 #pragma once
 
 #include <QString>
+#include <QStringList>
 
 namespace translator {
 
@@ -11,5 +12,8 @@ namespace translator {
 QString normalizeShortcut(const QString &text);
 bool isValidShortcut(const QString &text);
 bool shortcutsConflict(const QString &left, const QString &right);
+// Empty when every entry is valid and non-conflicting; otherwise a user-facing
+// message. Empty entries mean "disabled" and do not conflict.
+QString shortcutSetError(const QStringList &values);
 
 } // namespace translator

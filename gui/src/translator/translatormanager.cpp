@@ -310,24 +310,16 @@ bool TranslatorManager::setShortcuts(const QString &translate, const QString &ov
 	const QString inputs[4] = {translate, overlay, backlog, settings};
 	const char *keys[4] = {"translator/shortcut/translate", "translator/shortcut/overlay",
 		"translator/shortcut/backlog", "translator/shortcut/settings"};
+	const QStringList values = {translate, overlay, backlog, settings};
+	const QString problem = translator::shortcutSetError(values);
+	if (!problem.isEmpty())
+	{
+		setStatus(problem);
+		return false;
+	}
 	QString normalized[4];
 	for (int index = 0; index < 4; ++index)
-	{
-		if (!translator::isValidShortcut(inputs[index]))
-		{
-			setStatus(QStringLiteral("Invalid shortcut: %1").arg(inputs[index]));
-			return false;
-		}
 		normalized[index] = translator::normalizeShortcut(inputs[index]);
-	}
-	for (int left = 0; left < 4; ++left)
-		for (int right = left + 1; right < 4; ++right)
-			if (translator::shortcutsConflict(normalized[left], normalized[right]))
-			{
-				setStatus(QStringLiteral("Shortcut is used by more than one action: %1")
-					.arg(normalized[left]));
-				return false;
-			}
 	shortcut_translate_ = normalized[0];
 	shortcut_overlay_ = normalized[1];
 	shortcut_backlog_ = normalized[2];

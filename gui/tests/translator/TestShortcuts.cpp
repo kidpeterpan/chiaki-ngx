@@ -52,6 +52,19 @@ int main(int argc, char **argv)
 	if (translator::shortcutsConflict("", ""))
 		return Fail("empty shortcuts flagged as conflict");
 
+	if (!translator::shortcutSetError({"F13", "F14", "F15", "F12"}).isEmpty())
+		return Fail("valid shortcut set was rejected");
+	if (translator::shortcutSetError({"F13", "f13", "F15", "F12"}).isEmpty())
+		return Fail("duplicate shortcut set was accepted");
+	const QString empty_error = translator::shortcutSetError({"F13", "F14", "F15", ""});
+	if (!empty_error.isEmpty())
+	{
+		std::fprintf(stderr, "empty set error: %s\n", empty_error.toUtf8().constData());
+		return Fail("empty (disabled) shortcut was rejected");
+	}
+	if (translator::shortcutSetError({"Ctrl+", "F14", "F15", "F12"}).isEmpty())
+		return Fail("invalid shortcut set was accepted");
+
 	std::printf("PASS shortcut parsing, validation and conflicts\n");
 	return 0;
 }
