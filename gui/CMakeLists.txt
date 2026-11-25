@@ -213,6 +213,17 @@ if(CHIAKI_ENABLE_TESTS AND TARGET translator_core)
 		enable_testing()
 		add_test(NAME translator_cloud_ocr_tests COMMAND translator_cloud_ocr_tests)
 	endif()
+	# Drives the translator settings panel with controller keys (D-pad, A, B, L1/R1)
+	# against stub Translator/Chiaki singletons. Registered only where qmltestrunner and
+	# the QtTest QML module are installed.
+	find_program(TRANSLATOR_QMLTESTRUNNER qmltestrunner HINTS "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_BINS}")
+	if(TRANSLATOR_QMLTESTRUNNER AND EXISTS "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_QML}/QtTest/qmldir")
+		enable_testing()
+		add_test(NAME translator_qml_tests
+			COMMAND "${TRANSLATOR_QMLTESTRUNNER}" -platform offscreen
+				-import "${CMAKE_CURRENT_SOURCE_DIR}/tests/translator/qml/stubs"
+				-input "${CMAKE_CURRENT_SOURCE_DIR}/tests/translator/qml")
+	endif()
 endif()
 if(NOT CHIAKI_ENABLE_FFMPEG_DECODER)
 	message(FATAL_ERROR "Chiaki GUI requires CHIAKI_ENABLE_FFMPEG_DECODER=ON")

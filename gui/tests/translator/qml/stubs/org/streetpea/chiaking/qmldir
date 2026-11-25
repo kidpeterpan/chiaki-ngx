@@ -1,0 +1,3 @@
+module org.streetpea.chiaking
+singleton Translator 1.0 Translator.qml
+singleton Chiaki 1.0 Chiaki.qml
