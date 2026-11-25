@@ -23,6 +23,7 @@
 | Google translation | mock tests | Google Translate (free) + Google Cloud Translation ผ่าน mock HTTP; ยังไม่ทดสอบ key จริง |
 | RapidOCR PP-OCRv5 | probe | อ่าน `ゲームを続けよう` ได้ conf 1.000, ~29 ms บน M1; เลือกได้ใน QML |
 | Release 0.2.5 | CI after public | Mac DMG + AppImage (286 MB, Screen AI) build/publish สำเร็จ; checksums ใน release |
+| In-place overlay | QML smoke | overlay วางตาม ROI (normalized) แทน bottom center; มีตัวเลือก bottom center |
 | Real-time toggle | Live button + F11 | menu/overlay เปิด-ปิด pipeline ทันที; QML smoke ผ่าน |
 | Hotkeys | Qt shortcut tests | parse/validate/conflict ผ่าน; F13/F14/F15/F12 defaults, combination และ empty-disable |
 | Chiaki menu | QML | ปุ่ม 訳 ใน inline + separate stream menu เปิด translator settings |

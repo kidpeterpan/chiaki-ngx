@@ -84,6 +84,10 @@ TranslatorManager::TranslatorManager(QObject *parent) : QObject(parent)
 	QSettings settings;
 	enabled_.store(settings.value(QStringLiteral("translator/enabled"), false).toBool());
 	overlay_visible_ = settings.value(QStringLiteral("translator/overlay_visible"), true).toBool();
+	overlay_placement_ = settings.value(QStringLiteral("translator/overlay_placement"),
+		QStringLiteral("inplace")).toString();
+	if (overlay_placement_ != QStringLiteral("bottom"))
+		overlay_placement_ = QStringLiteral("inplace");
 	backend_id_ = settings.value(QStringLiteral("translator/backend"), QStringLiteral("gemini")).toString();
 	ocr_provider_ = settings.value(QStringLiteral("translator/ocr"), QStringLiteral("paddle")).toString();
 	if (!ocrProviderIds().contains(ocr_provider_))
@@ -254,6 +258,17 @@ void TranslatorManager::setOverlayVisible(bool visible)
 	overlay_visible_ = visible;
 	QSettings().setValue(QStringLiteral("translator/overlay_visible"), visible);
 	emit overlayVisibleChanged();
+}
+
+void TranslatorManager::setOverlayPlacement(const QString &placement)
+{
+	const QString normalized = placement == QStringLiteral("bottom") ? QStringLiteral("bottom")
+		: QStringLiteral("inplace");
+	if (overlay_placement_ == normalized)
+		return;
+	overlay_placement_ = normalized;
+	QSettings().setValue(QStringLiteral("translator/overlay_placement"), overlay_placement_);
+	emit overlayPlacementChanged();
 }
 
 void TranslatorManager::setBacklogVisible(bool visible)

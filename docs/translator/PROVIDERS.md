@@ -12,7 +12,7 @@ chiaki-ngx รองรับทั้ง OCR ในเครื่องแล�
 | Google Cloud Vision | cloud | เพิ่มแล้ว (mock test) | API key + Vision API |
 | OCR.space | cloud | เพิ่มแล้ว (mock test) | ฟรี/คีย์ (`helloworld`) |
 | Gemini Vision | cloud (OCR + แปลรวม) | เพิ่มแล้ว (mock test) | API key |
-| Chrome Screen AI | on-device | เพิ่มแล้ว (Linux x86_64) | `scripts/translator/fetch-screenai.sh` (~123 MB) |
+| Chrome Screen AI | on-device | เพิ่มแล้ว (Linux x86_64; assets ฝังใน AppImage v0.2.5+) | `scripts/translator/fetch-screenai.sh` (~123 MB) |
 
 RapidOCR ใช้ PP-OCRv5 mobile det + `ch_rec.onnx` + `ch_dict.txt`
 (~21 MB) ซึ่งอ่านภาษาญี่ปุ่นได้จากชุดอักขระ CJK ผสมอังกฤษ

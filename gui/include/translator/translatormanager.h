@@ -39,6 +39,7 @@ class TranslatorManager : public QObject
 	Q_PROPERTY(bool roiSelectionActive READ roiSelectionActive WRITE setRoiSelectionActive NOTIFY roiSelectionActiveChanged)
 	Q_PROPERTY(QString sourceText READ sourceText NOTIFY sourceTextChanged)
 	Q_PROPERTY(QString overlayText READ overlayText NOTIFY overlayTextChanged)
+	Q_PROPERTY(QString overlayPlacement READ overlayPlacement WRITE setOverlayPlacement NOTIFY overlayPlacementChanged)
 	Q_PROPERTY(QString statusText READ statusText NOTIFY statusTextChanged)
 	Q_PROPERTY(QString backendId READ backendId WRITE setBackendId NOTIFY backendIdChanged)
 	Q_PROPERTY(QStringList backendIds READ backendIds CONSTANT)
@@ -71,6 +72,7 @@ public:
 	bool roiSelectionActive() const { return roi_selection_active_.load(); }
 	QString sourceText() const { return source_text_; }
 	QString overlayText() const { return overlay_text_; }
+	QString overlayPlacement() const { return overlay_placement_; }
 	QString statusText() const { return status_text_; }
 	QString backendId() const { return backend_id_; }
 	QStringList backendIds() const { return QStringList{"gemini", "google", "google-cloud", "deepl", "opencode-go", "openai", "offline"}; }
@@ -94,6 +96,7 @@ public:
 
 	void setEnabled(bool enabled);
 	void setOverlayVisible(bool visible);
+	void setOverlayPlacement(const QString &placement);
 	void setBacklogVisible(bool visible);
 	void setRoiSelectionActive(bool active);
 	void setBackendId(const QString &backend_id);
@@ -144,6 +147,7 @@ signals:
 	void roiSelectionActiveChanged();
 	void sourceTextChanged();
 	void overlayTextChanged();
+	void overlayPlacementChanged();
 	void statusTextChanged();
 	void backendIdChanged();
 	void ocrProviderChanged();
@@ -197,6 +201,7 @@ private:
 	bool dictionary_ready_ = false;
 	QString source_text_;
 	QString overlay_text_;
+	QString overlay_placement_;
 	QString status_text_ = QStringLiteral("Translator idle");
 	QString backend_id_;
 	QString ocr_provider_;

@@ -73,6 +73,14 @@ scripts/translator/build-appimage.sh
 
 ค่าเริ่มต้น: `F11` เปิด/ปิด real-time, `F13` แปล, `F14` ซ่อน/แสดง, `F15` backlog, `F12` เปิด settings
 
+## Overlay placement
+
+ใน settings มีตัวเลือก **Overlay**:
+- **In-place (over source text)** — ค่าเริ่มต้น; วาดคำแปลทับบริเวณ ROI ของข้อความต้นฉบับ
+- **Bottom center** — วางกรอบคำแปลกลางล่างจอ
+
+ถ้าภาพยังไม่ตรงตำแหน่ง ให้เลือก ROI ให้แน่นขึ้นหรือสลับเป็น Bottom center
+
 ## ใช้งาน
 
 1. เชื่อมต่อ PS5 ตามปกติ

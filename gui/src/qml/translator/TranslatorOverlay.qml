@@ -191,10 +191,13 @@ Item {
     // Translated subtitle. The source line is tappable for dictionary lookup.
     Rectangle {
         id: subtitle
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: 28
-        width: Math.min(parent.width * 0.88, 980)
+        readonly property bool inPlace: Translator.overlayPlacement === "inplace"
+        readonly property real roiX: Translator.roiNormalized.x * parent.width
+        readonly property real roiY: Translator.roiNormalized.y * parent.height
+        readonly property real roiW: Translator.roiNormalized.width * parent.width
+        x: inPlace ? Math.max(4, Math.min(parent.width - width - 4, roiX)) : (parent.width - width) / 2
+        y: inPlace ? Math.max(4, Math.min(parent.height - height - 4, roiY)) : parent.height - height - 28
+        width: inPlace ? Math.max(120, Math.min(parent.width - 8, roiW)) : Math.min(parent.width * 0.88, 980)
         height: subtitleColumn.implicitHeight + 24
         radius: 10
         color: "#cc0b0c10"
@@ -450,7 +453,7 @@ Item {
                 ComboBox {
                     id: ocrBox
                     Layout.fillWidth: true
-                    model: ["PaddleOCR (PP-OCRv3 Japanese)", "RapidOCR (PP-OCRv5)", "Google Cloud Vision", "Gemini Vision (OCR + translate)", "OCR.space", "Chrome Screen AI"]
+                    model: ["PaddleOCR (PP-OCRv3 Japanese)", "RapidOCR (PP-OCRv5)", "Google Cloud Vision", "Gemini Vision (OCR + translate)", "OCR.space", "Chrome Screen AI (Linux)"]
                     currentIndex: Math.max(0, Translator.ocrProviderIds.indexOf(Translator.ocrProvider))
                     onActivated: Translator.ocrProvider = Translator.ocrProviderIds[index]
                 }
@@ -597,6 +600,18 @@ Item {
                     model: ["contrast", "threshold", "none"]
                     currentIndex: Math.max(0, ["contrast", "threshold", "none"].indexOf(Translator.preprocess))
                     onActivated: Translator.setPreprocess(["contrast", "threshold", "none"][index])
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                Text { text: "Overlay"; color: "#dddddd"; font.pixelSize: 14 }
+                ComboBox {
+                    Layout.fillWidth: true
+                    model: ["In-place (over source text)", "Bottom center"]
+                    currentIndex: Translator.overlayPlacement === "bottom" ? 1 : 0
+                    onActivated: Translator.overlayPlacement = index === 1 ? "bottom" : "inplace"
                 }
             }
 
