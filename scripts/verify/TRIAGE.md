@@ -32,20 +32,19 @@ builds. **medium** = a gap in coverage or reproducibility. **low** = noise.
   dated entries to `scripts/verify/audit-exceptions.txt`. The second option is a decision for a
   reviewer.
 
-### T16. 22 HIGH and CRITICAL CVEs in the bundled curl (found 2026-11-25, not yet decided)
+### T16. 22 HIGH and CRITICAL CVEs in the bundled curl (resolved 2026-11-25)
 
-- Evidence: osv-scanner reports 8 CRITICAL and 14 HIGH CVEs against the `third-party/curl`
-  submodule, pinned at `75a2079` (2024-12-11). CRITICAL: CVE-2026-10536, CVE-2026-11856,
-  CVE-2026-18924, CVE-2026-19931, CVE-2026-8924, CVE-2026-8926, CVE-2026-8927, CVE-2026-9079.
-  Full list: `.verify-logs/latest/security.log`.
-- Why it was not seen before: these advisories carry a CVSS score but no severity label, and
-  the audit read only the label, so they were counted as unrated (T7). The audit now rates
-  them by CVSS score, so `security` fails.
-- curl ships inside the app, so these are not dev-only like T2.
-- Options: (a) move the submodule to a current curl release and rebuild (fixes the cause);
-  (b) accept specific IDs in `scripts/verify/audit-exceptions.txt`, each with an expiry and
-  a reason a human reviewed (for example, a code path chiaki-ngx does not use).
-  Per AGENTS.md rule 4 the vendored tree is not edited to clear an advisory.
+- Was: osv-scanner reported 8 CRITICAL and 14 HIGH CVEs against `third-party/curl` pinned at
+  `75a2079` (curl 8.11.1, 2024-12-11). They carried a CVSS score but no severity label, so the
+  audit had counted them as unrated (T7).
+- Resolved: the submodule is at `curl-8_23_0` (`3163ec06`) and the audit reports none of them.
+  Two follow-ups came with it: `CURL_USE_LIBPSL OFF` in `third-party/CMakeLists.txt` (curl 8.x
+  requires libpsl by default; cookie domains are not used), and `cmake/curl-schannel-aia.patch`
+  regenerated for the new sources (same 40 changed lines; only context moved). The Windows
+  build that applies that patch has not been run locally.
+- The new tree's own HTTP test-suite requirements bring `filelock` 3.32.7 (GHSA-v4x8-3wr5-3wq8,
+  HIGH). The build never installs them; the exception is proposed in
+  `scripts/verify/audit-exceptions.txt` for the repo owner's review.
 
 ## High
 

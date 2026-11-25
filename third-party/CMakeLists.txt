@@ -68,6 +68,9 @@ if (NOT CHIAKI_IS_SWITCH)
 		set(CURL_DISABLE_INSTALL ON)
 		set(HTTP_ONLY ON)
 		set(ENABLE_WEBSOCKETS ON)
+		# curl 8.x requires libpsl by default; it only matters for cookie domains, which the
+		# PSN and WebSocket calls do not use, so it would be a new dependency for nothing.
+		set(CURL_USE_LIBPSL OFF)
 		set(CHIAKI_CURL_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/curl")
 	if(WIN32)
 		include("${PROJECT_SOURCE_DIR}/cmake/CurlSchannelAia.cmake")
