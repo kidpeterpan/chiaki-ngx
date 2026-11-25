@@ -32,6 +32,8 @@ struct OcrConfig
 	std::string cloud_language = "jpn";
 	std::string cloud_target_language = "th";
 	int cloud_timeout_ms = 20000;
+	// Chrome Screen AI resources directory (libchromescreenai.so + TFLite models).
+	std::string screenai_model_dir;
 };
 
 class OcrEngine

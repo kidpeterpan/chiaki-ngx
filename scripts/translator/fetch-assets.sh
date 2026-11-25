@@ -35,6 +35,11 @@ download "https://www.edrdg.org/pub/Nihongo/JMdict_e.gz" "$JMdict"
 echo "building $DICT/jmdict.db (about 83 MB) ..."
 python3 "$ROOT/translator_core/tools/build_jmdict.py" --input "$JMdict" --output "$DICT/jmdict.db"
 
+# Optional Chrome Screen AI provider (Linux x86_64 only, about 123 MB).
+if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" && "${TRANS_FETCH_SCREENAI:-1}" != "0" ]]; then
+	"$ROOT/scripts/translator/fetch-screenai.sh"
+fi
+
 # Optional second OCR provider: RapidOCR PP-OCRv5 (about 21 MB).
 if [[ "${TRANS_FETCH_RAPIDOCR:-1}" != "0" ]]; then
 	"$ROOT/scripts/translator/fetch-rapidocr.sh"

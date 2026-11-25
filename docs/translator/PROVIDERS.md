@@ -12,7 +12,7 @@ chiaki-ngx รองรับทั้ง OCR ในเครื่องแล�
 | Google Cloud Vision | cloud | เพิ่มแล้ว (mock test) | API key + Vision API |
 | OCR.space | cloud | เพิ่มแล้ว (mock test) | ฟรี/คีย์ (`helloworld`) |
 | Gemini Vision | cloud (OCR + แปลรวม) | เพิ่มแล้ว (mock test) | API key |
-| Chrome Screen AI | on-device | ยังไม่ implement | Chromium Screen AI |
+| Chrome Screen AI | on-device | เพิ่มแล้ว (Linux x86_64) | `scripts/translator/fetch-screenai.sh` (~123 MB) |
 
 RapidOCR ใช้ PP-OCRv5 mobile det + `ch_rec.onnx` + `ch_dict.txt`
 (~21 MB) ซึ่งอ่านภาษาญี่ปุ่นได้จากชุดอักขระ CJK ผสมอังกฤษ
@@ -51,7 +51,7 @@ RapidOCR ใช้ PP-OCRv5 mobile det + `ch_rec.onnx` + `ch_dict.txt`
 
 ## ที่ยังไม่ได้ทำ
 
-- Chrome Screen AI (ต้องใช้ Chromium Screen AI library/protobuf)
+- ทดสอบ Chrome Screen AI บน Steam Deck เครื่องจริง (ทดสอบ engine ด้วย lib จริงบน Linux แล้ว)
 - ทดสอบ provider จริงด้วย API key บน Steam Deck
 - Gemini Vision ยังใช้ชื่อโมเดล `gemini-2.5-flash` คงที่
 - OCR.space rate-limit (10 ครั้ง/10 นาที) ยังไม่ได้ทำ local throttling

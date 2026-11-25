@@ -399,7 +399,7 @@ Item {
                 ComboBox {
                     id: ocrBox
                     Layout.fillWidth: true
-                    model: ["PaddleOCR (PP-OCRv3 Japanese)", "RapidOCR (PP-OCRv5)", "Google Cloud Vision", "Gemini Vision (OCR + translate)", "OCR.space"]
+                    model: ["PaddleOCR (PP-OCRv3 Japanese)", "RapidOCR (PP-OCRv5)", "Google Cloud Vision", "Gemini Vision (OCR + translate)", "OCR.space", "Chrome Screen AI"]
                     currentIndex: Math.max(0, Translator.ocrProviderIds.indexOf(Translator.ocrProvider))
                     onActivated: Translator.ocrProvider = Translator.ocrProviderIds[index]
                 }

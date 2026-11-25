@@ -64,6 +64,8 @@ if(TARGET translator_core)
 		src/translator/cloudbackends.cpp
 		include/translator/cloudocr.h
 		src/translator/cloudocr.cpp
+		include/translator/screenai.h
+		src/translator/screenai.cpp
 	)
 endif()
 set(RESOURCE_FILES "")

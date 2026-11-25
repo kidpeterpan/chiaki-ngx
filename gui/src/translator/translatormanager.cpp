@@ -3,6 +3,7 @@
 
 #include "translator/cloudbackends.h"
 #include "translator/cloudocr.h"
+#include "translator/screenai.h"
 
 #include <trans/DictLookup.hpp>
 #include <trans/NllbBackend.hpp>
@@ -438,8 +439,11 @@ bool TranslatorManager::ensurePipeline(const trans::Rect &roi, QString *error)
 	const bool cloud_ocr = ocr_provider_ == QStringLiteral("google-vision") ||
 		ocr_provider_ == QStringLiteral("gemini-vision") ||
 		ocr_provider_ == QStringLiteral("ocrspace");
+	const bool screen_ai = ocr_provider_ == QStringLiteral("chromescreenai");
 	if (cloud_ocr)
 		ocr_ = std::make_shared<CloudOcrEngine>();
+	else if (screen_ai)
+		ocr_ = std::make_shared<ScreenAiEngine>();
 	else
 		ocr_ = trans::createOnnxOcrEngine();
 	if (!ocr_)
@@ -452,7 +456,7 @@ bool TranslatorManager::ensurePipeline(const trans::Rect &roi, QString *error)
 	QString det;
 	QString rec;
 	QString dict;
-	if (!cloud_ocr)
+	if (!cloud_ocr && !screen_ai)
 	{
 		if (ocr_provider_ == QStringLiteral("rapidocr"))
 		{
@@ -490,6 +494,17 @@ bool TranslatorManager::ensurePipeline(const trans::Rect &roi, QString *error)
 		config.ocr.cloud_api_key = ocr_api_key_.toStdString();
 		config.ocr.cloud_language = "jpn";
 		config.ocr.cloud_target_language = target_language_.toStdString();
+	}
+	else if (screen_ai)
+	{
+		const QString assets = assetPath(QStringLiteral("models/screenai/resources"));
+		if (assets.isEmpty())
+		{
+			if (error)
+				*error = QStringLiteral("Chrome Screen AI assets missing; run scripts/translator/fetch-screenai.sh");
+			return false;
+		}
+		config.ocr.screenai_model_dir = assets.toStdString();
 	}
 	else
 	{

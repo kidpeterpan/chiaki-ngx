@@ -72,3 +72,6 @@ core.*
 
 # verification harness logs (scripts/verify.sh)
 /.verify-logs/
+
+# fetched Chrome Screen AI resources (large, optional)
+/assets/models/screenai/
