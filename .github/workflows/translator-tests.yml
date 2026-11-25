@@ -26,6 +26,12 @@ jobs:
       - name: Test
         run: ctest --test-dir build-core --output-on-failure
 
+      - name: Shortcut parsing tests
+        run: |
+          sudo apt-get install -y qt6-base-dev
+          g++ -std=c++17 -fPIC -I gui/include             gui/src/translator/shortcuts.cpp gui/tests/translator/TestShortcuts.cpp             $(pkg-config --cflags --libs Qt6Gui Qt6Core)             -o /tmp/translator_shortcut_tests
+          /tmp/translator_shortcut_tests
+
   core-macos-onnx:
     name: core + OCR (macOS)
     runs-on: macos-15
