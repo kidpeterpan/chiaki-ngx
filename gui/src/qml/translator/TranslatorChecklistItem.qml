@@ -42,8 +42,10 @@ Rectangle {
             wrapMode: Text.Wrap
         }
 
-        RowLayout {
+        // Wraps, so two actions fit a narrow card instead of spilling into the next one.
+        Flow {
             id: actionRow
+            Layout.fillWidth: true
             spacing: 6
         }
     }
