@@ -17,6 +17,12 @@ Button {
 
     Keys.priority: Keys.BeforeItem
     Keys.onPressed: function(event) {
+        // A hidden control can keep focus; swallow its keys so gameplay input never
+        // presses a panel button or changes a value behind the player's back.
+        if (!control.visible) {
+            event.accepted = true
+            return
+        }
         switch (event.key) {
         case Qt.Key_Up:
             DeckNav.moveVertical(control, false)

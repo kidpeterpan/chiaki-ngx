@@ -24,6 +24,12 @@ ComboBox {
 
     Keys.priority: Keys.BeforeItem
     Keys.onPressed: function(event) {
+        // A hidden control can keep focus; swallow its keys so gameplay input never
+        // presses a panel button or changes a value behind the player's back.
+        if (!control.visible) {
+            event.accepted = true
+            return
+        }
         // An open list handles its own keys: up/down highlight, A selects, B closes.
         if (popup.visible)
             return
