@@ -24,6 +24,12 @@ Item {
         }
 
         function init() {
+            // A list left open by a failed case would keep focus and fail every later case.
+            const item = focused()
+            if (item && item.popup !== undefined && item.popup.visible) {
+                item.popup.close()
+                wait(300)
+            }
             overlay.settingsOpen = false
             Translator.enabled = false
             Translator.backendId = "google"
@@ -106,6 +112,24 @@ Item {
             compare(Translator.apiKey("gemini"), "abc")
             compare(overlay.engineIssue, "")
             compare(Translator.applyCount, 1)
+        }
+
+        // QmlController sends A as a press immediately followed by a release; the list must
+        // stay open after both, and D-pad down then A must choose the next option.
+        function test_a_opens_dropdown_list_and_chooses_an_option() {
+            openPanel()
+            keyClick(Qt.Key_PageDown)
+            keyClick(Qt.Key_Down)
+            const combo = focused()
+            verify(combo.popup !== undefined, "focus is on the Image cleanup dropdown")
+            keyClick(Qt.Key_Return)
+            wait(400)
+            verify(combo.popup.visible, "A opens the list and it stays open")
+            keyClick(Qt.Key_Down)
+            keyClick(Qt.Key_Return)
+            wait(400)
+            verify(!combo.popup.visible, "A on an option closes the list")
+            compare(Translator.preprocess, "threshold")
         }
 
         function test_use_free_google_clears_missing_key() {

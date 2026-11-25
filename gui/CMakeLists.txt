@@ -223,6 +223,10 @@ if(CHIAKI_ENABLE_TESTS AND TARGET translator_core)
 			COMMAND "${TRANSLATOR_QMLTESTRUNNER}" -platform offscreen
 				-import "${CMAKE_CURRENT_SOURCE_DIR}/tests/translator/qml/stubs"
 				-input "${CMAKE_CURRENT_SOURCE_DIR}/tests/translator/qml")
+		# The app always uses the style in qtquickcontrols2.conf (Material); test under it,
+		# not under the platform's default style, whose controls behave differently.
+		set_tests_properties(translator_qml_tests PROPERTIES
+			ENVIRONMENT "QT_QUICK_CONTROLS_CONF=${CMAKE_CURRENT_SOURCE_DIR}/src/qml/qtquickcontrols2.conf")
 	endif()
 	# Chrome Screen AI across pipeline restarts, with the real library: Linux only, and only
 	# once scripts/translator/fetch-screenai.sh has fetched it.

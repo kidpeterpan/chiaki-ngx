@@ -19,10 +19,23 @@ ComboBox {
             activated(next)
     }
 
+    // A opens the list on its release, not its press: QmlController sends the release right
+    // after the press, and ComboBox takes an A release on an open list as "accept and close",
+    // so a list opened on the press closed again at once.
+    property bool openOnRelease: false
+
     activeFocusOnTab: true
     font.pixelSize: theme.bodySize
 
     Keys.priority: Keys.BeforeItem
+    Keys.onReleased: function(event) {
+        if (!openOnRelease || (event.key !== Qt.Key_Return && event.key !== Qt.Key_Enter))
+            return
+        openOnRelease = false
+        event.accepted = true
+        if (control.visible)
+            popup.open()
+    }
     Keys.onPressed: function(event) {
         // A hidden control can keep focus; swallow its keys so gameplay input never
         // presses a panel button or changes a value behind the player's back.
@@ -48,7 +61,7 @@ ComboBox {
             break
         case Qt.Key_Return:
         case Qt.Key_Enter:
-            popup.open()
+            openOnRelease = true
             break
         case Qt.Key_PageUp:
             DeckNav.switchSection(control, -1)
