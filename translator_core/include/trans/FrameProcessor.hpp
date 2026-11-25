@@ -66,6 +66,9 @@ struct FrameProcessorConfig
 	double text_flip_ratio = 0.02;     // share of text pixels that may flip between samples
 	int text_bright_threshold = 200;   // light text on a dark area
 	int text_dark_threshold = 55;      // dark text on a light area
+	// Until the whole area has kept changing this long, any whole-area change still counts as a
+	// change (a new line in grey or coloured text on a still screen); after it, only text pixels.
+	int moving_area_after_ms = 500;
 };
 
 struct ProcessResult

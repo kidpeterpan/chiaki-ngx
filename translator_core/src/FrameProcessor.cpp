@@ -575,11 +575,13 @@ ProcessResult FrameProcessor::evaluate(const GrayscaleFrame &gray, int64_t delta
 	unsettled_ms_ = area_changed ? unsettled_ms_ + delta_ms : 0;
 	result.unsettled_ms = unsettled_ms_;
 
-	// Text-like pixels decide when there are any; an area without them (mid-grey or coloured
-	// text) keeps the whole-area measure.
+	// Text pixels are compared with the mask at the start of the current still period, so a line
+	// typed out one character at a time keeps adding up until it counts as a change.
 	const MaskComparison text = compareMasks(last_text_mask_, text_mask);
 	result.text_flip_ratio = text.flip_ratio;
-	const bool content_changed = text.empty ? area_changed : text.flip_ratio > config_.text_flip_ratio;
+	const bool text_changed = text.empty ? area_changed : text.flip_ratio > config_.text_flip_ratio;
+	const bool area_settling = area_changed && unsettled_ms_ < config_.moving_area_after_ms;
+	const bool content_changed = text_changed || area_settling;
 	const bool has_content = result.stddev >= config_.min_stddev;
 
 	if (content_changed || !has_content)
@@ -605,7 +607,8 @@ ProcessResult FrameProcessor::evaluate(const GrayscaleFrame &gray, int64_t delta
 	result.generation = generation_;
 	result.still_ms = still_ms_;
 	last_gray_ = std::move(diff_frame);
-	last_text_mask_ = std::move(text_mask);
+	if (content_changed || text.empty)
+		last_text_mask_ = std::move(text_mask);
 	return result;
 }
 

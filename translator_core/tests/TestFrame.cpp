@@ -72,6 +72,27 @@ void DrawGlyphLine(GrayscaleFrame &frame, int variant, uint8_t value)
 	}
 }
 
+// Glyph `index` of a dialogue box laid out in rows of 22, 28 px cells with 45% ink.
+void DrawGlyphAt(GrayscaleFrame &frame, int index, uint8_t value)
+{
+	const int left = 10 + (index % 22) * 28;
+	const int top = 10 + (index / 22) * 40;
+	for (int y = top + 4; y < top + 26; ++y)
+	{
+		for (int x = left + 4; x < left + 18; ++x)
+			frame.pixels[static_cast<size_t>(y) * frame.stride + x] = value;
+	}
+}
+
+void DrawBorder(GrayscaleFrame &frame, uint8_t value)
+{
+	for (int x = 0; x < frame.width; ++x)
+	{
+		for (int y : {0, 1, frame.height - 2, frame.height - 1})
+			frame.pixels[static_cast<size_t>(y) * frame.stride + x] = value;
+	}
+}
+
 FrameProcessorConfig LiveConfig(int width, int height)
 {
 	FrameProcessorConfig config;
@@ -394,11 +415,11 @@ TEST(frame_text_change_starts_new_generation)
 {
 	FrameProcessor processor(LiveConfig(120, 40));
 	std::vector<uint64_t> stable_generations;
-	for (int sample = 0; sample < 10; ++sample)
+	for (int sample = 0; sample < 16; ++sample)
 	{
 		GrayscaleFrame frame = MakeGray(120, 40, 0);
 		FillMovingBackground(frame, sample, 60, 30);
-		DrawGlyphLine(frame, sample < 5 ? 0 : 1, 240);
+		DrawGlyphLine(frame, sample < 10 ? 0 : 1, 240);
 		const ProcessResult result = processor.process(GrayView(frame), sample * 100);
 		if (result.stable)
 			stable_generations.push_back(result.generation);
@@ -430,6 +451,43 @@ TEST(frame_static_mid_grey_text_still_settles)
 	for (int sample = 0; sample < 5; ++sample)
 		emitted = processor.process(GrayView(frame), sample * 100).stable || emitted;
 	ASSERT_TRUE(emitted);
+}
+
+// A long line typed out one character per sample must not be read until it is complete.
+TEST(frame_long_line_typed_slowly_fires_only_when_complete)
+{
+	FrameProcessor processor(LiveConfig(640, 140));
+	const int glyphs = 66;
+	std::vector<int> fired_at;
+	for (int sample = 0; sample < glyphs + 8; ++sample)
+	{
+		GrayscaleFrame frame = MakeGray(640, 140, 40);
+		for (int glyph = 0; glyph < std::min(sample, glyphs); ++glyph)
+			DrawGlyphAt(frame, glyph, 230);
+		if (processor.process(GrayView(frame), sample * 100).stable)
+			fired_at.push_back(sample);
+	}
+	ASSERT_EQ(fired_at.size(), static_cast<size_t>(1));
+	ASSERT_TRUE(fired_at[0] >= glyphs);
+}
+
+// Grey text that never reaches the text-pixel threshold, next to a static white border:
+// a new line must still start a new generation on a still screen.
+TEST(frame_grey_text_change_next_to_a_white_border_is_read)
+{
+	FrameProcessor processor(LiveConfig(120, 40));
+	std::vector<uint64_t> stable_generations;
+	for (int sample = 0; sample < 12; ++sample)
+	{
+		GrayscaleFrame frame = MakeGray(120, 40, 60);
+		DrawBorder(frame, 255);
+		DrawGlyphLine(frame, sample < 6 ? 0 : 1, 150);
+		const ProcessResult result = processor.process(GrayView(frame), sample * 100);
+		if (result.stable)
+			stable_generations.push_back(result.generation);
+	}
+	ASSERT_EQ(stable_generations.size(), static_cast<size_t>(2));
+	ASSERT_TRUE(stable_generations[0] != stable_generations[1]);
 }
 
 TEST(frame_adaptive_threshold_is_binary)
