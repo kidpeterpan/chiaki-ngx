@@ -499,6 +499,57 @@ int main(int argc, char **argv)
 		std::printf("PASS openai refuses http non-local at request time\n");
 	}
 
+	// Google Translate free endpoint (no key).
+	{
+		MockServer mock;
+		if (!mock.start())
+			return Fail("mock server failed to listen");
+		mock.response.body = R"([[["สวัสดี","こんにちは",null,null,10]],null,"ja"])";
+		CloudBackendOptions options;
+		options.provider = "google";
+		options.google_translate_endpoint = QUrl(mock.base_url() + "/translate_a/single");
+		trans::TranslationRequest request;
+		request.text = "こんにちは";
+		request.source_language = "Japanese";
+		request.target_language = "th";
+		trans::TranslationResult result;
+		if (!run_translation(options, request, &result))
+			return Fail("google free callback not invoked");
+		if (!result.ok || result.text != "สวัสดี")
+			return Fail("google free response was not parsed");
+		if (!mock.last_path.contains("client=gtx") || !mock.last_path.contains("sl=ja") ||
+				!mock.last_path.contains("tl=th"))
+			return Fail("google free query parameters missing");
+		std::printf("PASS google free parse\n");
+	}
+
+	// Google Cloud Translation (API key).
+	{
+		MockServer mock;
+		if (!mock.start())
+			return Fail("mock server failed to listen");
+		mock.response.body = R"({"data":{"translations":[{"translatedText":"สวัสดี"}]}})";
+		CloudBackendOptions options;
+		options.provider = "google-cloud";
+		options.api_key = "g-key";
+		options.google_cloud_endpoint = QUrl(mock.base_url() + "/language/translate/v2");
+		trans::TranslationRequest request;
+		request.text = "こんにちは";
+		request.source_language = "Japanese";
+		request.target_language = "th";
+		trans::TranslationResult result;
+		if (!run_translation(options, request, &result))
+			return Fail("google cloud callback not invoked");
+		if (!result.ok || result.text != "สวัสดี")
+			return Fail("google cloud response was not parsed");
+		if (!mock.last_path.contains("key=g-key"))
+			return Fail("google cloud API key missing");
+		if (!mock.last_request.contains("\"target\":\"th\"") ||
+				!mock.last_request.contains("\"source\":\"ja\""))
+			return Fail("google cloud language mapping missing");
+		std::printf("PASS google cloud parse\n");
+	}
+
 	std::printf("%d failure(s)\n", failures);
 	return failures == 0 ? 0 : 1;
 }

@@ -42,6 +42,8 @@ class TranslatorManager : public QObject
 	Q_PROPERTY(QString statusText READ statusText NOTIFY statusTextChanged)
 	Q_PROPERTY(QString backendId READ backendId WRITE setBackendId NOTIFY backendIdChanged)
 	Q_PROPERTY(QStringList backendIds READ backendIds CONSTANT)
+	Q_PROPERTY(QString ocrProvider READ ocrProvider WRITE setOcrProvider NOTIFY ocrProviderChanged)
+	Q_PROPERTY(QStringList ocrProviderIds READ ocrProviderIds CONSTANT)
 	Q_PROPERTY(QString targetLanguage READ targetLanguage WRITE setTargetLanguage NOTIFY targetLanguageChanged)
 	Q_PROPERTY(QVariantMap roiNormalized READ roiNormalized NOTIFY roiChanged)
 	Q_PROPERTY(QVariantList backlog READ backlog NOTIFY backlogChanged)
@@ -65,7 +67,9 @@ public:
 	QString overlayText() const { return overlay_text_; }
 	QString statusText() const { return status_text_; }
 	QString backendId() const { return backend_id_; }
-	QStringList backendIds() const { return QStringList{"gemini", "deepl", "opencode-go", "openai", "offline"}; }
+	QStringList backendIds() const { return QStringList{"gemini", "google", "google-cloud", "deepl", "opencode-go", "openai", "offline"}; }
+	QString ocrProvider() const { return ocr_provider_; }
+	QStringList ocrProviderIds() const { return QStringList{"paddle", "rapidocr"}; }
 	QString targetLanguage() const { return target_language_; }
 	QVariantMap roiNormalized() const;
 	QVariantList backlog() const { return backlog_; }
@@ -81,6 +85,7 @@ public:
 	void setBacklogVisible(bool visible);
 	void setRoiSelectionActive(bool active);
 	void setBackendId(const QString &backend_id);
+	void setOcrProvider(const QString &provider);
 	void setTargetLanguage(const QString &language);
 
 	// Called from the decoder thread with a frame that is still owned by the
@@ -123,6 +128,7 @@ signals:
 	void overlayTextChanged();
 	void statusTextChanged();
 	void backendIdChanged();
+	void ocrProviderChanged();
 	void targetLanguageChanged();
 	void roiChanged();
 	void backlogChanged();
@@ -172,6 +178,7 @@ private:
 	QString overlay_text_;
 	QString status_text_ = QStringLiteral("Translator idle");
 	QString backend_id_;
+	QString ocr_provider_;
 	QString target_language_;
 	QString preprocess_;
 	QString nllb_model_path_;

@@ -15,6 +15,8 @@
 | GUI compile (macOS) | `scripts/translator/build-macos.sh` | สำเร็จ + bundle models/dict เข้า `.app` + ad-hoc sign; เปิดแอปและโหลด Main.qml ได้ |
 | Linux x86_64 (Arch) | Docker + clang + Qt6/FFmpeg/libplacebo + ONNX | `translator_tests` 63/63, `translator_onnx_tests` 2/2; full GUI build สำเร็จ |
 | macOS app bundle | `build-macos.sh` + launch | `chiaki.app` มี assets ใน Resources/translator; QML Main โหลดไม่มี translator error |
+| Google translation | mock tests | Google Translate (free) + Google Cloud Translation ผ่าน mock HTTP; ยังไม่ทดสอบ key จริง |
+| RapidOCR PP-OCRv5 | probe | อ่าน `ゲームを続けよう` ได้ conf 1.000, ~29 ms บน M1; เลือกได้ใน QML |
 | Touch routing | v0.2.1 | แตะ 訳 เพื่อเปิดเมนู, grabInput ระหว่างเมนู, แตะคำแปลเพื่อ JMdict; แก้ใน `qmlmainwindow.cpp`/`TranslatorOverlay.qml` |
 | Steam Deck AppImage | CI `Build translator AppImage x86_64` | สำเร็จ; glibc max 2.31; มี models/dict/ONNX; `AppRun --help` ผ่าน |
 | macOS DMG | CI `Build chiaki-ngx macOSX` + full dict | สำเร็จ; mount DMG แล้ว `--help` ทำงาน, ONNX ถูก bundle ใน `Frameworks` |

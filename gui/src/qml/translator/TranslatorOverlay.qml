@@ -395,11 +395,25 @@ Item {
             RowLayout {
                 width: parent.width
                 spacing: 8
+                Text { text: "OCR"; color: "#dddddd"; font.pixelSize: 14 }
+                ComboBox {
+                    id: ocrBox
+                    Layout.fillWidth: true
+                    model: ["PaddleOCR (PP-OCRv3 Japanese)", "RapidOCR (PP-OCRv5)"]
+                    currentIndex: Math.max(0, Translator.ocrProviderIds.indexOf(Translator.ocrProvider))
+                    onActivated: Translator.ocrProvider = Translator.ocrProviderIds[index]
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
                 Text { text: "Backend"; color: "#dddddd"; font.pixelSize: 14 }
                 ComboBox {
                     id: backendBox
                     Layout.fillWidth: true
-                    model: ["Gemini Flash", "DeepL", "OpenCode Go", "OpenAI-compatible", "Offline NLLB"]
+                    model: ["Gemini Flash", "Google Translate (free)", "Google Cloud Translation",
+                            "DeepL", "OpenCode Go", "OpenAI-compatible", "Offline NLLB"]
                     currentIndex: Math.max(0, Translator.backendIds.indexOf(Translator.backendId))
                     onActivated: Translator.backendId = Translator.backendIds[index]
                 }
@@ -408,7 +422,7 @@ Item {
             RowLayout {
                 width: parent.width
                 spacing: 8
-                visible: Translator.backendId !== "offline"
+                visible: Translator.backendId !== "offline" && Translator.backendId !== "google"
                 Text { text: "API key"; color: "#dddddd"; font.pixelSize: 14 }
                 TextField {
                     id: apiKeyField
@@ -424,6 +438,15 @@ Item {
                         Translator.applySettings()
                     }
                 }
+            }
+
+            Text {
+                width: parent.width
+                visible: Translator.backendId === "google"
+                text: "Google Translate (free, no API key). Google Cloud needs a key and the Cloud Translation API enabled."
+                color: "#bbbbbb"
+                font.pixelSize: 12
+                wrapMode: Text.Wrap
             }
 
             RowLayout {

@@ -34,6 +34,29 @@ QString LanguageName(const QString &code)
 	return code;
 }
 
+QString GoogleLanguageCode(const QString &language)
+{
+	const QString normalized = language.trimmed().toLower();
+	if (normalized == QStringLiteral("japanese") || normalized == QStringLiteral("ja") ||
+			normalized == QStringLiteral("jpn"))
+		return QStringLiteral("ja");
+	if (normalized == QStringLiteral("thai") || normalized == QStringLiteral("th") ||
+			normalized == QStringLiteral("tha"))
+		return QStringLiteral("th");
+	if (normalized == QStringLiteral("english") || normalized == QStringLiteral("en") ||
+			normalized == QStringLiteral("eng"))
+		return QStringLiteral("en");
+	if (normalized == QStringLiteral("korean") || normalized == QStringLiteral("ko") ||
+			normalized == QStringLiteral("kor"))
+		return QStringLiteral("ko");
+	if (normalized == QStringLiteral("chinese") || normalized == QStringLiteral("zh") ||
+			normalized == QStringLiteral("zho"))
+		return QStringLiteral("zh-CN");
+	if (normalized == QStringLiteral("auto"))
+		return QStringLiteral("auto");
+	return language;
+}
+
 QString CleanTranslation(QString text)
 {
 	text = text.trimmed();
@@ -101,6 +124,10 @@ CloudTranslatorBackend::CloudTranslatorBackend(CloudBackendOptions options, QObj
 		options_.gemini_base_url = QUrl(QStringLiteral("https://generativelanguage.googleapis.com/v1beta/models/"));
 	if (!options_.deepl_endpoint.isValid() || options_.deepl_endpoint.isEmpty())
 		options_.deepl_endpoint = QUrl(QStringLiteral("https://api-free.deepl.com/v2/translate"));
+	if (!options_.google_translate_endpoint.isValid() || options_.google_translate_endpoint.isEmpty())
+		options_.google_translate_endpoint = QUrl(QStringLiteral("https://translate.googleapis.com/translate_a/single"));
+	if (!options_.google_cloud_endpoint.isValid() || options_.google_cloud_endpoint.isEmpty())
+		options_.google_cloud_endpoint = QUrl(QStringLiteral("https://translation.googleapis.com/language/translate/v2"));
 	if (options_.timeout_ms <= 0)
 		options_.timeout_ms = 20000;
 }
@@ -150,6 +177,10 @@ void CloudTranslatorBackend::startRequest(const trans::TranslationRequest &reque
 {
 	if (options_.provider == QStringLiteral("deepl"))
 		startDeepl(request, std::move(callback));
+	else if (options_.provider == QStringLiteral("google"))
+		startGoogleFree(request, std::move(callback));
+	else if (options_.provider == QStringLiteral("google-cloud"))
+		startGoogleCloud(request, std::move(callback));
 	else if (IsOpenAiProvider(options_.provider))
 		startOpenAiChat(request, std::move(callback));
 	else
@@ -230,6 +261,62 @@ void CloudTranslatorBackend::startOpenAiChat(const trans::TranslationRequest &re
 	});
 }
 
+void CloudTranslatorBackend::startGoogleFree(const trans::TranslationRequest &request,
+	trans::TranslationCallback callback)
+{
+	QUrl url = options_.google_translate_endpoint;
+	QUrlQuery query;
+	query.addQueryItem(QStringLiteral("client"), QStringLiteral("gtx"));
+	query.addQueryItem(QStringLiteral("sl"), GoogleLanguageCode(QString::fromStdString(request.source_language)));
+	query.addQueryItem(QStringLiteral("tl"), GoogleLanguageCode(QString::fromStdString(request.target_language)));
+	query.addQueryItem(QStringLiteral("dt"), QStringLiteral("t"));
+	query.addQueryItem(QStringLiteral("q"), QString::fromStdString(request.text));
+	url.setQuery(query);
+
+	QNetworkRequest network_request(url);
+	network_request.setHeader(QNetworkRequest::UserAgentHeader,
+		QStringLiteral("Mozilla/5.0 (X11; Linux x86_64) chiaki-ngx-translator"));
+	QNetworkReply *reply = network_->get(network_request);
+	auto *timer = new QTimer(reply);
+	timer->setSingleShot(true);
+	QObject::connect(timer, &QTimer::timeout, reply, &QNetworkReply::abort);
+	timer->start(options_.timeout_ms);
+	const qint64 started_ms = QDateTime::currentMSecsSinceEpoch();
+	QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, callback, started_ms]() mutable {
+		finish(reply, std::move(callback), started_ms);
+	});
+}
+
+void CloudTranslatorBackend::startGoogleCloud(const trans::TranslationRequest &request,
+	trans::TranslationCallback callback)
+{
+	QUrl url = options_.google_cloud_endpoint;
+	QUrlQuery query;
+	query.addQueryItem(QStringLiteral("key"), options_.api_key);
+	url.setQuery(query);
+
+	QJsonObject body{
+		{QStringLiteral("q"), QString::fromStdString(request.text)},
+		{QStringLiteral("target"), GoogleLanguageCode(QString::fromStdString(request.target_language))},
+		{QStringLiteral("format"), QStringLiteral("text")},
+	};
+	const QString source = GoogleLanguageCode(QString::fromStdString(request.source_language));
+	if (!source.isEmpty() && source != QStringLiteral("auto"))
+		body.insert(QStringLiteral("source"), source);
+
+	QNetworkRequest network_request(url);
+	network_request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+	QNetworkReply *reply = network_->post(network_request, QJsonDocument(body).toJson(QJsonDocument::Compact));
+	auto *timer = new QTimer(reply);
+	timer->setSingleShot(true);
+	QObject::connect(timer, &QTimer::timeout, reply, &QNetworkReply::abort);
+	timer->start(options_.timeout_ms);
+	const qint64 started_ms = QDateTime::currentMSecsSinceEpoch();
+	QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, callback, started_ms]() mutable {
+		finish(reply, std::move(callback), started_ms);
+	});
+}
+
 void CloudTranslatorBackend::startDeepl(const trans::TranslationRequest &request,
 	trans::TranslationCallback callback)
 {
@@ -296,6 +383,30 @@ void CloudTranslatorBackend::finish(QNetworkReply *reply, trans::TranslationCall
 			if (!translations.isEmpty())
 				result.text = CleanTranslation(
 					translations.first().toObject().value(QStringLiteral("text")).toString()).toStdString();
+		}
+		else if (options_.provider == QStringLiteral("google"))
+		{
+			// [[["translated","original",...], ...], null, "ja", ...]
+			QString translated;
+			const QJsonArray groups = document.array();
+			if (!groups.isEmpty())
+			{
+				for (const QJsonValue &segment_value : groups.first().toArray())
+				{
+					const QJsonArray segment = segment_value.toArray();
+					if (!segment.isEmpty() && segment.first().isString())
+						translated += segment.first().toString();
+				}
+			}
+			result.text = CleanTranslation(translated).toStdString();
+		}
+		else if (options_.provider == QStringLiteral("google-cloud"))
+		{
+			const QJsonArray translations = root.value(QStringLiteral("data")).toObject()
+				.value(QStringLiteral("translations")).toArray();
+			if (!translations.isEmpty())
+				result.text = CleanTranslation(
+					translations.first().toObject().value(QStringLiteral("translatedText")).toString()).toStdString();
 		}
 		else if (IsOpenAiProvider(options_.provider))
 		{

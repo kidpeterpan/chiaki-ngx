@@ -82,6 +82,9 @@ TranslatorManager::TranslatorManager(QObject *parent) : QObject(parent)
 	enabled_.store(settings.value(QStringLiteral("translator/enabled"), false).toBool());
 	overlay_visible_ = settings.value(QStringLiteral("translator/overlay_visible"), true).toBool();
 	backend_id_ = settings.value(QStringLiteral("translator/backend"), QStringLiteral("gemini")).toString();
+	ocr_provider_ = settings.value(QStringLiteral("translator/ocr"), QStringLiteral("paddle")).toString();
+	if (ocr_provider_ != QStringLiteral("rapidocr"))
+		ocr_provider_ = QStringLiteral("paddle");
 	target_language_ = settings.value(QStringLiteral("translator/target"), QStringLiteral("th")).toString();
 	preprocess_ = settings.value(QStringLiteral("translator/preprocess"), QStringLiteral("contrast")).toString();
 	nllb_model_path_ = settings.value(QStringLiteral("translator/nllb_model"),
@@ -264,6 +267,17 @@ void TranslatorManager::setBackendId(const QString &backend_id)
 		restartPipeline();
 }
 
+void TranslatorManager::setOcrProvider(const QString &provider)
+{
+	if (!ocrProviderIds().contains(provider) || ocr_provider_ == provider)
+		return;
+	ocr_provider_ = provider;
+	QSettings().setValue(QStringLiteral("translator/ocr"), ocr_provider_);
+	emit ocrProviderChanged();
+	if (prepared_.load())
+		restartPipeline();
+}
+
 void TranslatorManager::setTargetLanguage(const QString &language)
 {
 	if (target_language_ == language)
@@ -363,7 +377,7 @@ bool TranslatorManager::ensureBackend()
 	}
 
 	const QString key = apiKey(backend_id_);
-	if (key.isEmpty())
+	if (key.isEmpty() && backend_id_ != QStringLiteral("google"))
 	{
 		backend_ = std::make_shared<trans::NullTranslatorBackend>();
 		setStatus(QStringLiteral("Add a %1 API key in translator settings").arg(backend_id_));
@@ -406,13 +420,26 @@ bool TranslatorManager::ensurePipeline(const trans::Rect &roi, QString *error)
 		return false;
 	}
 
-	const QString det = assetPath(QStringLiteral("models/ch_PP-OCRv3_det.onnx"));
-	const QString rec = assetPath(QStringLiteral("models/japan_PP-OCRv3_rec.onnx"));
-	const QString dict = assetPath(QStringLiteral("models/japan_dict.txt"));
+	QString det;
+	QString rec;
+	QString dict;
+	if (ocr_provider_ == QStringLiteral("rapidocr"))
+	{
+		det = assetPath(QStringLiteral("models/rapidocr/ch_PP-OCRv5_mobile_det.onnx"));
+		rec = assetPath(QStringLiteral("models/rapidocr/ch_rec.onnx"));
+		dict = assetPath(QStringLiteral("models/rapidocr/ch_dict.txt"));
+	}
+	else
+	{
+		det = assetPath(QStringLiteral("models/ch_PP-OCRv3_det.onnx"));
+		rec = assetPath(QStringLiteral("models/japan_PP-OCRv3_rec.onnx"));
+		dict = assetPath(QStringLiteral("models/japan_dict.txt"));
+	}
 	if (det.isEmpty() || rec.isEmpty() || dict.isEmpty())
 	{
 		if (error)
-			*error = QStringLiteral("OCR model files not found; set CHIAKI_TRANSLATOR_ASSETS");
+			*error = QStringLiteral("OCR model files for %1 not found; run scripts/translator/fetch-assets.sh")
+				.arg(ocr_provider_);
 		return false;
 	}
 

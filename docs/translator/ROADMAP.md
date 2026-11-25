@@ -49,6 +49,7 @@
 - [x] L4/R4/L5/R5 ผ่าน SDL paddle + F13–F15 สำรอง
 - [x] Backlog และตั้งค่าใน overlay
 - [x] AppImageBuilder.yml, Flatpak manifest, AppRun, build script
+- [x] เพิ่ม RapidOCR PP-OCRv5 และ Google Translate/Cloud Translation
 - [x] สร้าง AppImage บน Ubuntu 20.04 builder (glibc 2.31) และปล่อย release v0.1.0-steamdeck; CI smoke ผ่าน
 - [ ] Flatpak ยังไม่ build
 - [x] `scripts/verify.sh --full` ผ่านทุก stage และ CI Translator tests ผ่าน

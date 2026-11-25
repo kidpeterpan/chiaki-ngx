@@ -35,5 +35,10 @@ download "https://www.edrdg.org/pub/Nihongo/JMdict_e.gz" "$JMdict"
 echo "building $DICT/jmdict.db (about 83 MB) ..."
 python3 "$ROOT/translator_core/tools/build_jmdict.py" --input "$JMdict" --output "$DICT/jmdict.db"
 
+# Optional second OCR provider: RapidOCR PP-OCRv5 (about 21 MB).
+if [[ "${TRANS_FETCH_RAPIDOCR:-1}" != "0" ]]; then
+	"$ROOT/scripts/translator/fetch-rapidocr.sh"
+fi
+
 echo
 echo "done. Set CHIAKI_TRANSLATOR_ASSETS=$ROOT/assets when running from the source tree."

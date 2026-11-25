@@ -26,6 +26,10 @@ struct CloudBackendOptions
 	QUrl deepl_endpoint = QUrl(QStringLiteral("https://api-free.deepl.com/v2/translate"));
 	// Providers "opencode-go" and "openai". Empty means the provider default.
 	QUrl openai_base_url;
+	// Google Translate's unofficial web endpoint (no key) and the Cloud
+	// Translation v2 endpoint (API key). Overridable for tests.
+	QUrl google_translate_endpoint = QUrl(QStringLiteral("https://translate.googleapis.com/translate_a/single"));
+	QUrl google_cloud_endpoint = QUrl(QStringLiteral("https://translation.googleapis.com/language/translate/v2"));
 	int timeout_ms = 20000;
 };
 
@@ -53,6 +57,8 @@ private:
 	void startGemini(const trans::TranslationRequest &request, trans::TranslationCallback callback);
 	void startDeepl(const trans::TranslationRequest &request, trans::TranslationCallback callback);
 	void startOpenAiChat(const trans::TranslationRequest &request, trans::TranslationCallback callback);
+	void startGoogleFree(const trans::TranslationRequest &request, trans::TranslationCallback callback);
+	void startGoogleCloud(const trans::TranslationRequest &request, trans::TranslationCallback callback);
 	void finish(QNetworkReply *reply, trans::TranslationCallback callback, qint64 started_ms);
 
 	CloudBackendOptions options_;
