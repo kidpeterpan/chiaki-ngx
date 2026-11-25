@@ -25,7 +25,7 @@
 | Hotkeys | Qt shortcut tests | parse/validate/conflict ผ่าน; F13/F14/F15/F12 defaults, combination และ empty-disable |
 | Chiaki menu | QML | ปุ่ม 訳 ใน inline + separate stream menu เปิด translator settings |
 | Touch routing | v0.2.1 | แตะ 訳 เพื่อเปิดเมนู, grabInput ระหว่างเมนู, แตะคำแปลเพื่อ JMdict; แก้ใน `qmlmainwindow.cpp`/`TranslatorOverlay.qml` |
-| Steam Deck AppImage | CI `Release chiaki-ngx translator` v0.2.5 | สำเร็จ; มี RapidOCR PP-OCRv5 + models/dict/ONNX; glibc 2.31 |
+| Steam Deck AppImage | CI `Release chiaki-ngx translator` v0.2.7 | สำเร็จ; มี RapidOCR PP-OCRv5 + models/dict/ONNX; glibc 2.31 |
 | macOS DMG | CI `Build chiaki-ngx macOSX` + full dict | สำเร็จ; mount DMG แล้ว `--help` ทำงาน, ONNX ถูก bundle ใน `Frameworks` |
 | Repo health | `scripts/verify.sh --full` | PASS ทุก stage: env/lint/build-core/test-core/build-release/test-unit/smoke/security (77s) |
 | CI translator tests | GitHub Actions `Translator tests` | success บน main/feature (58a4e0f) |

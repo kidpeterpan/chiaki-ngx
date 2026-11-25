@@ -2,15 +2,15 @@
 
 ## ดาวน์โหลด
 
-**[chiaki-ngx-translator-x86_64.AppImage](https://github.com/kidpeterpan/chiaki-ngx/releases/download/v0.2.5-translator/chiaki-ngx-translator-x86_64.AppImage)** — 286 MB
+**[chiaki-ngx-translator-x86_64.AppImage](https://github.com/kidpeterpan/chiaki-ngx/releases/download/v0.2.7-translator/chiaki-ngx-translator-x86_64.AppImage)** — 286 MB
 
 SHA-256:
 
 ```text
-311c6459e2104a44d9558426aefad25afa5d8eb7c52c99eb321b917a1dc84e4c
+cabb8d6696f0eda54b98f4da833859abb3598abd76b06a1ccbac077e039f2235
 ```
 
-ใช้ **v0.2.5** ซึ่งมี real-time toggle, touch fix, Chrome Screen AI และ Decky-Translator providers ครบ
+ใช้ **v0.2.7** ซึ่งมี real-time toggle, touch fix, Chrome Screen AI และ Decky-Translator providers ครบ
 
 ไฟล์ `.sha256` อยู่ใน release เดียวกัน
 
@@ -37,24 +37,19 @@ SHA-256:
 
 ## Touch บน Steam Deck
 
-ตั้งแต่ **v0.2.1** ขึ้นไป (v0.2.5 แนะนำ):
+ตั้งแต่ **v0.2.1** ขึ้นไป (v0.2.7 แนะนำ):
 
 - แตะไอคอน **訳** มุมขวาบนได้เลย แม้เกมกำลังใช้ touchscreen เป็น PS touchpad
 - เมื่อเมนูเปิด ระบบจะ `grabInput()` ให้ touch ทั้งหมดมาที่ overlay จึงกดปุ่ม/เลือก ROI/เปิด backlog ได้
 - แตะที่คำแปลเพื่อเปิด JMdict
 - ปิดเมนูแล้ว touch จะกลับไปเป็น PS touchpad ตามเดิม
 
-ถ้าใช้เวอร์ชันเก่าแล้วแตะไม่ติด ให้อัปเดตเป็น v0.2.5
+ถ้าใช้เวอร์ชันเก่าแล้วแตะไม่ติด ให้อัปเดตเป็น v0.2.7
 
 ## Chrome Screen AI
 
-รองรับใน source แล้ว (Linux x86_64) แต่ **release v0.2.2 ยังไม่มี** เพราะ GitHub Actions
-ติด billing/spending limit ตอนสร้าง v0.2.4 — build เองด้วย:
-
-```bash
-scripts/translator/fetch-assets.sh   # includes fetch-screenai on Linux x86_64
-scripts/translator/build-appimage.sh
-```
+**v0.2.7 AppImage มี Chrome Screen AI พร้อม assets ฝังอยู่ในตัวแล้ว** (Linux x86_64)
+เลือกได้ที่ช่อง OCR → `Chrome Screen AI (Linux)`; ไม่ต้องดาวน์โหลดเพิ่ม
 
 ## เปิด settings จาก Chiaki menu
 
