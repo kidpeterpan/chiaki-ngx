@@ -8,5 +8,6 @@ namespace translator {
 int clampOverlayAutoHideSeconds(int seconds);
 int clampScanIntervalMs(int milliseconds);
 int clampStableMs(int milliseconds);
+int clampOverlayFontSize(int pixels);
 
 } // namespace translator

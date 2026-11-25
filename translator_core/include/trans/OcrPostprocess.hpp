@@ -59,6 +59,20 @@ int preferredRotation(const Rect &box);
 // and concatenates them top-to-bottom. Wide subtitle boxes are left alone.
 std::vector<OcrLine> mergeVerticalLines(const std::vector<OcrLine> &lines);
 
+// A dialogue block: one or more OCR lines that belong to the same on-screen
+// text box. Boxes are in ROI-image coordinates.
+struct OcrBlock
+{
+	std::string text;
+	float confidence = 0.0f;
+	Rect box;
+	std::vector<OcrLine> lines;
+};
+
+// Groups side-by-side choice boxes separately while merging wrapped subtitle
+// lines that overlap horizontally and sit close vertically.
+std::vector<OcrBlock> groupOcrLines(const std::vector<OcrLine> &lines);
+
 Image cropImage(const Image &image, const Rect &roi);
 Image rotate90Clockwise(const Image &image);
 Image rotate90CounterClockwise(const Image &image);

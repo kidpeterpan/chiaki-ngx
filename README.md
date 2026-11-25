@@ -12,7 +12,7 @@
      \/__/         \/__/                     \/__/         \|__|                     \/__/         \/__/         \|__|
 ```
 
-**chiaki-ngx** is a fork of [chiaki-ng](https://github.com/chiaki-ng/chiaki-ng), the
+**chiaki-ngx** is a fork of the [upstream Chiaki Remote Play project](https://github.com/chiaki-ng/chiaki-ng), the
 open-source PlayStation 4/5 Remote Play client. It keeps the upstream client and adds an
 optional, in-viewport Japanese subtitle translator for Steam Deck and desktop play.
 
@@ -24,11 +24,11 @@ optional, in-viewport Japanese subtitle translator for Steam Deck and desktop pl
 | Translation | Gemini, Google Translate (free), Google Cloud Translation, DeepL, OpenAI-compatible/OpenCode Go, and offline NLLB-200 |
 | Context | Rolling 3-line dialogue context, LRU translation cache, Levenshtein duplicate suppression |
 | Dictionary | Offline JMdict SQLite lookup with deinflection and tap-to-define |
-| Overlay | In-viewport ROI overlay, in-place or bottom placement, configurable auto-hide |
+| Overlay | Box-accurate multi-block in-place overlay, bottom fallback, configurable auto-hide, font family and size |
 | Timing | Configurable scan interval and text-stability delay |
 | Controls | Steam Deck L4/R4/L5/R5, touch routing, live enable/disable, remappable hotkeys with key capture |
 | Packaging | Linux AppImage, macOS arm64 DMG, and upstream Flatpak/Windows build paths |
-| Quality | 64 translator-core tests, cloud/OCR mock tests, QML smoke checks, and `scripts/verify.sh --full` |
+| Quality | 68 translator-core tests, overlay geometry/preference/shortcut tests, cloud/OCR mock tests, QML smoke checks, and `scripts/verify.sh --full` |
 
 The translator is opt-in and disabled by default. Without it, chiaki-ngx behaves like the
 upstream client.
@@ -65,7 +65,7 @@ Download the verified macOS DMG and Steam Deck AppImage from
 
 ## Credits and license
 
-Based on [chiaki-ng](https://github.com/chiaki-ng/chiaki-ng) and the original
+Based on the [upstream Chiaki Remote Play project](https://github.com/chiaki-ng/chiaki-ng) and the original
 [Chiaki](https://github.com/thestr4ng3r/chiaki) project. The client is distributed under
 AGPL-3.0-only-OpenSSL. OCR/dictionary assets retain their upstream licenses; see
 [`assets/models/README.md`](assets/models/README.md) and

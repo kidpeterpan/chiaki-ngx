@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 #include <trans/OcrPostprocess.hpp>
+#include <trans/TextProcessor.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -401,4 +402,52 @@ Image rotate90CounterClockwise(const Image &image)
 	return rotated;
 }
 
+
+std::vector<OcrBlock> groupOcrLines(const std::vector<OcrLine> &lines)
+{
+	std::vector<OcrBlock> blocks;
+	for (const OcrLine &line : lines)
+	{
+		if (line.text.empty() || line.box.empty())
+			continue;
+		bool merged = false;
+		for (OcrBlock &block : blocks)
+		{
+			const int left = std::max(line.box.x, block.box.x);
+			const int right = std::min(line.box.right(), block.box.right());
+			const int overlap = right - left;
+			const int min_width = std::min(line.box.width, block.box.width);
+			const int vertical_gap = std::max(0, std::max(line.box.y, block.box.y) -
+				std::min(line.box.bottom(), block.box.bottom()));
+			const bool horizontally_close = overlap > std::max(4, min_width / 4) ||
+				std::abs((line.box.x + line.box.width / 2) - (block.box.x + block.box.width / 2)) <=
+					std::max(line.box.width, block.box.width) / 2;
+			const int allowed_gap = std::max(8, std::max(line.box.height, block.box.height) * 3 / 4);
+			if (horizontally_close && vertical_gap <= allowed_gap)
+			{
+				const int union_left = std::min(line.box.x, block.box.x);
+				const int union_top = std::min(line.box.y, block.box.y);
+				const int union_right = std::max(line.box.right(), block.box.right());
+				const int union_bottom = std::max(line.box.bottom(), block.box.bottom());
+				const float old_weight = static_cast<float>(block.lines.size());
+				block.confidence = (block.confidence * old_weight + line.confidence) / (old_weight + 1.0f);
+				block.box = Rect{union_left, union_top, union_right - union_left, union_bottom - union_top};
+				block.lines.push_back(line);
+				merged = true;
+				break;
+			}
+		}
+		if (!merged)
+		{
+			OcrBlock block;
+			block.box = line.box;
+			block.confidence = line.confidence;
+			block.lines.push_back(line);
+			blocks.push_back(std::move(block));
+		}
+	}
+	for (OcrBlock &block : blocks)
+		block.text = joinOcrLines(block.lines);
+	return blocks;
+}
 } // namespace trans

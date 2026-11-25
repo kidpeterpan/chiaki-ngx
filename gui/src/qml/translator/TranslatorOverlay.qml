@@ -85,6 +85,20 @@ Item {
     function updateSubtitleTouchRegion() {
         if (!Chiaki.window)
             return
+        if (Translator.overlayRegions.length > 0) {
+            let minX = 1.0, minY = 1.0, maxX = 0.0, maxY = 0.0
+            for (let index = 0; index < Translator.overlayRegions.length; ++index) {
+                const region = Translator.overlayRegions[index]
+                minX = Math.min(minX, Number(region.x))
+                minY = Math.min(minY, Number(region.y))
+                maxX = Math.max(maxX, Number(region.x) + Number(region.width))
+                maxY = Math.max(maxY, Number(region.y) + Number(region.height))
+            }
+            Chiaki.window.setTranslatorTouchRegion(minX * width, minY * height,
+                (maxX - minX) * width, (maxY - minY) * height,
+                Translator.enabled && Translator.overlayVisible)
+            return
+        }
         Chiaki.window.setTranslatorTouchRegion(
             subtitle.x, subtitle.y, subtitle.width, subtitle.height,
             subtitle.visible && Translator.enabled && Translator.overlayVisible)
@@ -112,6 +126,7 @@ Item {
             else if (Translator.overlayVisible && Translator.overlayText.length > 0)
                 overlayHideTimer.restart()
         }
+        function onOverlayRegionsChanged() { root.updateSubtitleTouchRegion() }
         function onOverlayVisibleChanged() {
             if (Translator.overlayVisible) {
                 root.autoHidden = false
@@ -265,6 +280,66 @@ Item {
         }
     }
 
+    // Box-accurate dialogue blocks from the OCR regions.
+    Repeater {
+        model: Translator.overlayRegions
+        delegate: Rectangle {
+            id: regionBlock
+            readonly property real blockX: Number(modelData.x) * parent.width
+            readonly property real blockY: Number(modelData.y) * parent.height
+            readonly property real blockW: Math.max(120, Math.min(parent.width - 8,
+                Number(modelData.width) * parent.width))
+            readonly property real blockH: Math.max(44, Math.min(parent.height - 8,
+                Number(modelData.height) * parent.height + 8))
+            x: Math.max(4, Math.min(parent.width - blockW - 4, blockX))
+            y: Math.max(4, Math.min(parent.height - blockH - 4, blockY))
+            width: blockW
+            height: blockH
+            radius: 8
+            color: "#cc0b0c10"
+            border.color: "#33ffffff"
+            border.width: 1
+            visible: Chiaki.session !== null && Translator.enabled && Translator.overlayVisible &&
+                     !root.autoHidden && Translator.overlayRegions.length > 0
+
+            Column {
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 2
+
+                Text {
+                    width: parent.width
+                    text: modelData.source
+                    color: "#a8ffffff"
+                    font.family: Translator.overlayFontFamily
+                    font.pixelSize: Math.max(10, Math.min(14, regionBlock.height / 4))
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 2
+                    elide: Text.ElideRight
+                }
+
+                Text {
+                    width: parent.width
+                    height: parent.height - 20
+                    text: modelData.translation
+                    color: "#fff4e6c8"
+                    font.family: Translator.overlayFontFamily
+                    font.pixelSize: Translator.overlayFontSize > 0 ? Translator.overlayFontSize
+                        : Math.max(14, Math.min(28, width / 22))
+                    font.bold: true
+                    wrapMode: Text.Wrap
+                    fontSizeMode: Text.Fit
+                    minimumPixelSize: 10
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+
+            TapHandler {
+                onTapped: Translator.lookupWord(modelData.source)
+            }
+        }
+    }
+
     // Translated subtitle. The source line is tappable for dictionary lookup.
     Rectangle {
         id: subtitle
@@ -281,7 +356,8 @@ Item {
         border.color: "#33ffffff"
         border.width: 1
         visible: Chiaki.session !== null && Translator.enabled && Translator.overlayVisible &&
-                 !root.autoHidden && Translator.overlayText.length > 0
+                 !root.autoHidden && Translator.overlayRegions.length === 0 &&
+                 Translator.overlayText.length > 0
 
         onVisibleChanged: root.updateSubtitleTouchRegion()
         onXChanged: root.updateSubtitleTouchRegion()
@@ -303,6 +379,7 @@ Item {
                 x: 14
                 text: Translator.sourceText
                 color: "#a8ffffff"
+                font.family: Translator.overlayFontFamily
                 font.pixelSize: 13
                 wrapMode: TextEdit.Wrap
                 readOnly: true
@@ -321,7 +398,9 @@ Item {
                 width: parent.width - 28
                 text: Translator.overlayText
                 color: "#fff4e6c8"
-                font.pixelSize: Math.max(18, Math.min(28, width / 26))
+                font.family: Translator.overlayFontFamily
+                font.pixelSize: Translator.overlayFontSize > 0 ? Translator.overlayFontSize
+                    : Math.max(18, Math.min(28, width / 26))
                 font.bold: true
                 wrapMode: Text.Wrap
             }
@@ -725,6 +804,26 @@ Item {
                 }
                 Text { text: "0 = overlay never auto-hides"; color: "#99ffffff"; font.pixelSize: 11 }
                 Item { Layout.fillWidth: true }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                Text { text: "Overlay font"; color: "#dddddd"; font.pixelSize: 13 }
+                ComboBox {
+                    Layout.fillWidth: true
+                    model: ["System default"].concat(Qt.fontFamilies())
+                    currentIndex: Translator.overlayFontFamily.length > 0
+                        ? Math.max(0, model.indexOf(Translator.overlayFontFamily)) : 0
+                    onActivated: Translator.overlayFontFamily = index === 0 ? "" : model[index]
+                }
+                Text { text: "Size"; color: "#dddddd"; font.pixelSize: 13 }
+                SpinBox {
+                    from: 0
+                    to: 72
+                    value: Translator.overlayFontSize
+                    onValueModified: Translator.overlayFontSize = value
+                }
             }
 
             RowLayout {

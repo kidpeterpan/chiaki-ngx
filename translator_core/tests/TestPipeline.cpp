@@ -54,6 +54,8 @@ public:
 		++calls;
 		if (error)
 			error->clear();
+		if (!multiple_lines.empty())
+			return multiple_lines;
 		if (text.empty())
 			return {};
 		OcrLine line;
@@ -70,6 +72,7 @@ public:
 	std::string text = "こんにちは";
 	std::string translated;
 	float confidence = 0.94f;
+	std::vector<OcrLine> multiple_lines;
 	std::atomic<int> calls{0};
 };
 
@@ -210,6 +213,36 @@ TEST(pipeline_suppresses_near_duplicate_subtitles)
 
 	ASSERT_EQ(backend->calls.load(), 1);
 	ASSERT_TRUE(pipeline.stats().duplicates >= 1);
+	pipeline.stop();
+}
+
+TEST(pipeline_delivers_multiple_boxes_for_side_by_side_text)
+{
+	auto ocr = std::make_shared<FakeOcrEngine>();
+	auto backend = std::make_shared<FakeBackend>();
+	auto collector = std::make_shared<Collector>();
+
+	OcrLine left;
+	left.text = "はい";
+	left.confidence = 0.9f;
+	left.box = Rect{10, 10, 100, 30};
+	OcrLine right;
+	right.text = "いいえ";
+	right.confidence = 0.8f;
+	right.box = Rect{300, 10, 100, 30};
+	ocr->multiple_lines = {left, right};
+
+	TranslatorPipeline pipeline;
+	std::string error;
+	ASSERT_TRUE(pipeline.start(MakeConfig(), ocr, backend, MakeCallbacks(collector), &error));
+	pipeline.manualTrigger();
+	pipeline.submitImage(MakeImage(500, 100, 200, 3), 0);
+	ASSERT_TRUE(collector->waitForItems(2));
+	ASSERT_EQ(backend->calls.load(), 2);
+	ASSERT_EQ(collector->items[0].source_box.x, 10);
+	ASSERT_EQ(collector->items[1].source_box.x, 300);
+	ASSERT_EQ(collector->items[0].source_width, 500);
+	ASSERT_EQ(collector->items[0].batch_id, collector->items[1].batch_id);
 	pipeline.stop();
 }
 

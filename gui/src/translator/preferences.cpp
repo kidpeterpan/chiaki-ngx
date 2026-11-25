@@ -19,4 +19,9 @@ int clampStableMs(int milliseconds)
 	return milliseconds < 100 ? 100 : (milliseconds > 5000 ? 5000 : milliseconds);
 }
 
+int clampOverlayFontSize(int pixels)
+{
+	return pixels < 0 ? 0 : (pixels > 72 ? 72 : pixels);
+}
+
 } // namespace translator

@@ -252,3 +252,53 @@ TEST(ocr_does_not_merge_separate_vertical_columns)
 	ASSERT_EQ(merged[0].text, "あい");
 	ASSERT_EQ(merged[1].text, "うえ");
 }
+
+TEST(ocr_groups_wrapped_subtitle_lines_into_one_block)
+{
+	OcrLine first;
+	first.text = "ゲームを";
+	first.confidence = 0.9f;
+	first.box = Rect{20, 400, 480, 40};
+	OcrLine second;
+	second.text = "続けよう";
+	second.confidence = 0.8f;
+	second.box = Rect{20, 446, 480, 40};
+
+	const std::vector<OcrBlock> blocks = groupOcrLines({first, second});
+	ASSERT_EQ(blocks.size(), static_cast<size_t>(1));
+	ASSERT_EQ(blocks[0].box.x, 20);
+	ASSERT_EQ(blocks[0].box.y, 400);
+	ASSERT_EQ(blocks[0].box.width, 480);
+	ASSERT_EQ(blocks[0].box.height, 86);
+	ASSERT_TRUE(blocks[0].text.find("ゲームを") != std::string::npos);
+	ASSERT_TRUE(blocks[0].text.find("続けよう") != std::string::npos);
+	ASSERT_NEAR(blocks[0].confidence, 0.85f, 1e-5);
+}
+
+TEST(ocr_keeps_side_by_side_choices_as_separate_blocks)
+{
+	OcrLine left;
+	left.text = "はい";
+	left.box = Rect{20, 400, 180, 40};
+	OcrLine right;
+	right.text = "いいえ";
+	right.box = Rect{320, 400, 180, 40};
+
+	const std::vector<OcrBlock> blocks = groupOcrLines({left, right});
+	ASSERT_EQ(blocks.size(), static_cast<size_t>(2));
+	ASSERT_EQ(blocks[0].text, "はい");
+	ASSERT_EQ(blocks[1].text, "いいえ");
+}
+
+TEST(ocr_keeps_distant_lines_as_separate_blocks)
+{
+	OcrLine top;
+	top.text = "上";
+	top.box = Rect{20, 20, 100, 30};
+	OcrLine bottom;
+	bottom.text = "下";
+	bottom.box = Rect{20, 400, 100, 30};
+
+	const std::vector<OcrBlock> blocks = groupOcrLines({top, bottom});
+	ASSERT_EQ(blocks.size(), static_cast<size_t>(2));
+}

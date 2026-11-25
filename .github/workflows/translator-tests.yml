@@ -39,6 +39,14 @@ jobs:
             -o /tmp/translator_preference_tests
           /tmp/translator_preference_tests
 
+      - name: Overlay geometry tests
+        run: |
+          g++ -std=c++17 -I gui/include -I translator_core/include \
+            gui/src/translator/overlaygeometry.cpp \
+            gui/tests/translator/TestOverlayGeometry.cpp \
+            -o /tmp/translator_overlay_geometry_tests
+          /tmp/translator_overlay_geometry_tests
+
   core-macos-onnx:
     name: core + OCR (macOS)
     runs-on: macos-15

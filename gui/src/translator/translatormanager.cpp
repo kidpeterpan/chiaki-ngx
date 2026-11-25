@@ -6,6 +6,7 @@
 #include "translator/screenai.h"
 #include "translator/shortcuts.h"
 #include "translator/preferences.h"
+#include "translator/overlaygeometry.h"
 
 #include <trans/DictLookup.hpp>
 #include <trans/NllbBackend.hpp>
@@ -112,6 +113,9 @@ TranslatorManager::TranslatorManager(QObject *parent) : QObject(parent)
 		settings.value(QStringLiteral("translator/scan_interval_ms"), 100).toInt());
 	stable_ms_ = translator::clampStableMs(
 		settings.value(QStringLiteral("translator/stable_ms"), 250).toInt());
+	overlay_font_family_ = settings.value(QStringLiteral("translator/overlay_font_family")).toString();
+	overlay_font_size_ = translator::clampOverlayFontSize(
+		settings.value(QStringLiteral("translator/overlay_font_size"), 0).toInt());
 	target_language_ = settings.value(QStringLiteral("translator/target"), QStringLiteral("th")).toString();
 	preprocess_ = settings.value(QStringLiteral("translator/preprocess"), QStringLiteral("contrast")).toString();
 	nllb_model_path_ = settings.value(QStringLiteral("translator/nllb_model"),
@@ -375,6 +379,25 @@ void TranslatorManager::setOverlayAutoHideSeconds(int seconds)
 	overlay_auto_hide_seconds_ = clamped;
 	QSettings().setValue(QStringLiteral("translator/overlay_auto_hide_seconds"), clamped);
 	emit overlayAutoHideSecondsChanged();
+}
+
+void TranslatorManager::setOverlayFontFamily(const QString &family)
+{
+	if (overlay_font_family_ == family)
+		return;
+	overlay_font_family_ = family;
+	QSettings().setValue(QStringLiteral("translator/overlay_font_family"), overlay_font_family_);
+	emit overlayFontChanged();
+}
+
+void TranslatorManager::setOverlayFontSize(int pixels)
+{
+	const int clamped = translator::clampOverlayFontSize(pixels);
+	if (overlay_font_size_ == clamped)
+		return;
+	overlay_font_size_ = clamped;
+	QSettings().setValue(QStringLiteral("translator/overlay_font_size"), overlay_font_size_);
+	emit overlayFontChanged();
 }
 
 void TranslatorManager::setScanIntervalMs(int milliseconds)
@@ -964,8 +987,11 @@ void TranslatorManager::onSessionEnded()
 	prepared_.store(false);
 	source_text_.clear();
 	overlay_text_.clear();
+	overlay_regions_.clear();
+	last_overlay_batch_ = 0;
 	emit sourceTextChanged();
 	emit overlayTextChanged();
+	emit overlayRegionsChanged();
 	emit preparedChanged();
 	setStatus(QStringLiteral("Session ended"));
 }
@@ -974,9 +1000,62 @@ void TranslatorManager::processTranslation(const trans::TranslationItem &item)
 {
 	overlay_text_ = QString::fromStdString(item.translated_text);
 	source_text_ = QString::fromStdString(item.source_text);
+	if (item.batch_id != last_overlay_batch_)
+	{
+		last_overlay_batch_ = item.batch_id;
+		overlay_regions_.clear();
+	}
+
+	double roi_x = 0.0;
+	double roi_y = 0.0;
+	double roi_w = 1.0;
+	double roi_h = 1.0;
+	{
+		std::lock_guard<std::mutex> lock(roi_mutex_);
+		roi_x = roi_x_;
+		roi_y = roi_y_;
+		roi_w = roi_w_;
+		roi_h = roi_h_;
+	}
+	const translator::OverlayRect mapped = translator::mapBoxToViewport(item.source_box,
+		item.source_width, item.source_height, roi_x, roi_y, roi_w, roi_h);
+	const double x = mapped.x;
+	const double y = mapped.y;
+	const double w = mapped.width;
+	const double h = mapped.height;
+	QVariantMap region;
+	region.insert(QStringLiteral("x"), x);
+	region.insert(QStringLiteral("y"), y);
+	region.insert(QStringLiteral("width"), w);
+	region.insert(QStringLiteral("height"), h);
+	region.insert(QStringLiteral("source"), QString::fromStdString(item.source_text));
+	region.insert(QStringLiteral("translation"), QString::fromStdString(item.translated_text));
+	overlay_regions_.append(region);
+	while (overlay_regions_.size() > 8)
+		overlay_regions_.removeFirst();
+
+	std::vector<translator::OverlayRect> rects;
+	rects.reserve(overlay_regions_.size());
+	for (const QVariant &value : overlay_regions_)
+	{
+		const QVariantMap map = value.toMap();
+		rects.push_back({map.value(QStringLiteral("x")).toDouble(),
+			map.value(QStringLiteral("y")).toDouble(),
+			map.value(QStringLiteral("width")).toDouble(),
+			map.value(QStringLiteral("height")).toDouble()});
+	}
+	translator::resolveOverlayOverlaps(rects);
+	for (int index = 0; index < overlay_regions_.size(); ++index)
+	{
+		QVariantMap map = overlay_regions_[index].toMap();
+		map.insert(QStringLiteral("y"), rects[index].y);
+		overlay_regions_[index] = map;
+	}
+
 	appendBacklog(item);
 	emit overlayTextChanged();
 	emit sourceTextChanged();
+	emit overlayRegionsChanged();
 	setStatus(item.from_cache ? QStringLiteral("Translation from cache") : QStringLiteral("Translated"));
 }
 

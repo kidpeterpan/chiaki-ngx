@@ -125,6 +125,13 @@ struct TranslationItem
 	int64_t source_timestamp_ms = 0;
 	int64_t translated_timestamp_ms = 0;
 	bool from_cache = false;
+	// Where this translation came from inside the ROI. Coordinates are in the
+	// ROI crop; source_width/source_height map them back to normalized screen
+	// space. batch_id groups regions produced from the same OCR frame.
+	Rect source_box;
+	int source_width = 0;
+	int source_height = 0;
+	uint64_t batch_id = 0;
 };
 
 } // namespace trans

@@ -54,6 +54,9 @@ class TranslatorManager : public QObject
 	Q_PROPERTY(int overlayAutoHideSeconds READ overlayAutoHideSeconds WRITE setOverlayAutoHideSeconds NOTIFY overlayAutoHideSecondsChanged)
 	Q_PROPERTY(int scanIntervalMs READ scanIntervalMs WRITE setScanIntervalMs NOTIFY timingChanged)
 	Q_PROPERTY(int stableMs READ stableMs WRITE setStableMs NOTIFY timingChanged)
+	Q_PROPERTY(QVariantList overlayRegions READ overlayRegions NOTIFY overlayRegionsChanged)
+	Q_PROPERTY(QString overlayFontFamily READ overlayFontFamily WRITE setOverlayFontFamily NOTIFY overlayFontChanged)
+	Q_PROPERTY(int overlayFontSize READ overlayFontSize WRITE setOverlayFontSize NOTIFY overlayFontChanged)
 	Q_PROPERTY(QString targetLanguage READ targetLanguage WRITE setTargetLanguage NOTIFY targetLanguageChanged)
 	Q_PROPERTY(QVariantMap roiNormalized READ roiNormalized NOTIFY roiChanged)
 	Q_PROPERTY(QVariantList backlog READ backlog NOTIFY backlogChanged)
@@ -90,6 +93,9 @@ public:
 	int overlayAutoHideSeconds() const { return overlay_auto_hide_seconds_; }
 	int scanIntervalMs() const { return scan_interval_ms_; }
 	int stableMs() const { return stable_ms_; }
+	QVariantList overlayRegions() const { return overlay_regions_; }
+	QString overlayFontFamily() const { return overlay_font_family_; }
+	int overlayFontSize() const { return overlay_font_size_; }
 	QString targetLanguage() const { return target_language_; }
 	QVariantMap roiNormalized() const;
 	QVariantList backlog() const { return backlog_; }
@@ -117,6 +123,8 @@ public:
 	void setOverlayAutoHideSeconds(int seconds);
 	void setScanIntervalMs(int milliseconds);
 	void setStableMs(int milliseconds);
+	void setOverlayFontFamily(const QString &family);
+	void setOverlayFontSize(int pixels);
 	void setTargetLanguage(const QString &language);
 
 	// Called from the decoder thread with a frame that is still owned by the
@@ -165,6 +173,8 @@ signals:
 	void shortcutsChanged();
 	void overlayAutoHideSecondsChanged();
 	void timingChanged();
+	void overlayRegionsChanged();
+	void overlayFontChanged();
 	void settingsRequested();
 	void targetLanguageChanged();
 	void roiChanged();
@@ -226,6 +236,8 @@ private:
 	int overlay_auto_hide_seconds_ = 6;
 	int scan_interval_ms_ = 100;
 	int stable_ms_ = 250;
+	QString overlay_font_family_;
+	int overlay_font_size_ = 0;
 	QString target_language_;
 	QString preprocess_;
 	QString nllb_model_path_;
@@ -236,6 +248,8 @@ private:
 	qreal roi_w_ = 0.90;
 	qreal roi_h_ = 0.30;
 	QVariantList backlog_;
+	QVariantList overlay_regions_;
+	uint64_t last_overlay_batch_ = 0;
 	QVariantList dictionary_entries_;
 	QString dictionary_word_;
 };

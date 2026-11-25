@@ -27,6 +27,14 @@ int main()
 		std::fprintf(stderr, "stable time clamp failed\n");
 		return 1;
 	}
+	if (translator::clampOverlayFontSize(-1) != 0 ||
+			translator::clampOverlayFontSize(0) != 0 ||
+			translator::clampOverlayFontSize(22) != 22 ||
+			translator::clampOverlayFontSize(999) != 72)
+	{
+		std::fprintf(stderr, "overlay font size clamp failed\n");
+		return 1;
+	}
 	std::printf("PASS timing preference clamps\n");
 	return 0;
 }

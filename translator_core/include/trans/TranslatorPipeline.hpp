@@ -100,7 +100,8 @@ private:
 	void handleFrame(const std::shared_ptr<PipelineShared> &shared, QueuedFrame frame);
 	static void deliver(std::shared_ptr<PipelineShared> shared, const std::string &source,
 			float confidence, int64_t source_timestamp_ms, bool from_cache,
-			const std::string &translation);
+			const std::string &translation, const Rect &source_box = {},
+			int source_width = 0, int source_height = 0, uint64_t batch_id = 0);
 	static void fail(const std::shared_ptr<PipelineShared> &shared, const std::string &error);
 
 	std::shared_ptr<PipelineShared> shared_;

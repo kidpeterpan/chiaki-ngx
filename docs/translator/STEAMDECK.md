@@ -84,8 +84,9 @@ SHA-256:
 ## Overlay placement
 
 ใน settings มีตัวเลือก **Overlay**:
-- **In-place (over source text)** — ค่าเริ่มต้น; วาดคำแปลทับบริเวณ ROI ของข้อความต้นฉบับ
+- **In-place (over source text)** — ค่าเริ่มต้น; ใช้ bounding box ของแต่ละ dialogue block เพื่อวางคำแปลให้ตรงตำแหน่ง
 - **Bottom center** — วางกรอบคำแปลกลางล่างจอ
+- **Overlay font / Size** — เลือกฟอนต์และขนาด (0 = auto-fit)
 
 ถ้าภาพยังไม่ตรงตำแหน่ง ให้เลือก ROI ให้แน่นขึ้นหรือสลับเป็น Bottom center
 

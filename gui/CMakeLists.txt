@@ -70,6 +70,8 @@ if(TARGET translator_core)
 		src/translator/shortcuts.cpp
 		include/translator/preferences.h
 		src/translator/preferences.cpp
+		include/translator/overlaygeometry.h
+		src/translator/overlaygeometry.cpp
 	)
 endif()
 set(RESOURCE_FILES "")
@@ -190,6 +192,15 @@ if(CHIAKI_ENABLE_TESTS AND TARGET translator_core)
 		)
 		target_include_directories(translator_preference_tests PRIVATE include)
 		add_test(NAME translator_preference_tests COMMAND translator_preference_tests)
+
+		add_executable(translator_overlay_geometry_tests
+			tests/translator/TestOverlayGeometry.cpp
+			include/translator/overlaygeometry.h
+			src/translator/overlaygeometry.cpp
+		)
+		target_include_directories(translator_overlay_geometry_tests PRIVATE include)
+		target_link_libraries(translator_overlay_geometry_tests PRIVATE translator_core)
+		add_test(NAME translator_overlay_geometry_tests COMMAND translator_overlay_geometry_tests)
 	endif()
 	if(TARGET Qt6::Network AND TARGET Qt6::Gui)
 		add_executable(translator_cloud_ocr_tests

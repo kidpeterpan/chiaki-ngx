@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 #include <trans/TranslatorPipeline.hpp>
+#include <trans/OcrPostprocess.hpp>
 
 #include <trans/RingBuffer.hpp>
 
@@ -276,89 +277,103 @@ void TranslatorPipeline::handleFrame(const std::shared_ptr<PipelineShared> &shar
 		return;
 	}
 
-	float confidence = 0.0f;
-	for (const OcrLine &line : lines)
-		confidence += line.confidence;
-	confidence /= static_cast<float>(lines.size());
-	const std::string text = joinOcrLines(lines);
-	if (!isTranslatableText(text))
+	const std::vector<OcrBlock> blocks = groupOcrLines(lines);
+	if (blocks.empty())
 	{
 		if (shared->callbacks.onState)
-			shared->callbacks.onState("noise");
+			shared->callbacks.onState("no-text");
 		return;
 	}
-
-	if (shared->callbacks.onOcr)
-		shared->callbacks.onOcr(text, confidence);
-
-	if (!manual && shared->dedup.isDuplicate(text, frame.now_ms))
-	{
-		shared->duplicates.fetch_add(1);
-		if (shared->callbacks.onState)
-			shared->callbacks.onState("duplicate");
-		return;
-	}
-	shared->dedup.remember(text, frame.now_ms);
 
 	const std::string &target_language = shared->config.prompt.target_language;
+	const uint64_t batch_id = static_cast<uint64_t>(frame.now_ms);
+	bool translated_any = false;
 
-	// Gemini Vision (and any future OCR+translation provider) returns the
-	// translation alongside each region; do not translate it a second time.
-	std::string pretranslated;
-	for (const OcrLine &line : lines)
+	for (const OcrBlock &block : blocks)
 	{
-		if (line.translated_text.empty())
+		const std::string text = block.text;
+		if (!isTranslatableText(text))
 			continue;
-		if (!pretranslated.empty())
-			pretranslated += "\n";
-		pretranslated += line.translated_text;
-	}
-	if (!pretranslated.empty() && isTranslatableText(pretranslated))
-	{
-		shared->cache.put(text, target_language, pretranslated);
-		deliver(shared, text, confidence, frame.now_ms, false, pretranslated);
-		return;
-	}
-	if (const std::optional<std::string> cached = shared->cache.get(text, target_language))
-	{
-		shared->cache_hits.fetch_add(1);
-		deliver(shared, text, confidence, frame.now_ms, true, *cached);
-		return;
+		translated_any = true;
+
+		if (shared->callbacks.onOcr)
+			shared->callbacks.onOcr(text, block.confidence);
+
+		if (!manual && shared->dedup.isDuplicate(text, frame.now_ms))
+		{
+			shared->duplicates.fetch_add(1);
+			continue;
+		}
+		shared->dedup.remember(text, frame.now_ms);
+
+		// Gemini Vision (and any future OCR+translation provider) returns the
+		// translation alongside each region; do not translate it a second time.
+		std::string pretranslated;
+		for (const OcrLine &line : block.lines)
+		{
+			if (line.translated_text.empty())
+				continue;
+			if (!pretranslated.empty())
+				pretranslated += "\n";
+			pretranslated += line.translated_text;
+		}
+		if (!pretranslated.empty() && isTranslatableText(pretranslated))
+		{
+			shared->cache.put(text, target_language, pretranslated);
+			deliver(shared, text, block.confidence, frame.now_ms, false, pretranslated,
+				block.box, frame.image.width, frame.image.height, batch_id);
+			continue;
+		}
+		if (const std::optional<std::string> cached = shared->cache.get(text, target_language))
+		{
+			shared->cache_hits.fetch_add(1);
+			deliver(shared, text, block.confidence, frame.now_ms, true, *cached,
+				block.box, frame.image.width, frame.image.height, batch_id);
+			continue;
+		}
+
+		TranslationRequest request;
+		request.text = text;
+		{
+			std::lock_guard<std::mutex> lock(shared->state_mutex);
+			request.context = shared->context.pairs();
+		}
+		request.source_language = shared->config.prompt.source_language;
+		request.target_language = target_language;
+
+		const int64_t source_timestamp = frame.now_ms;
+		const Rect box = block.box;
+		const int image_width = frame.image.width;
+		const int image_height = frame.image.height;
+		try
+		{
+			shared->backend->translate(request, [shared, text, block, box, image_width,
+					image_height, source_timestamp, batch_id](TranslationResult translation) {
+				if (!translation.ok)
+				{
+					fail(shared, translation.error.empty() ? "translation failed" : translation.error);
+					return;
+				}
+				shared->last_translation_ms.store(static_cast<double>(translation.latency_ms));
+				shared->cache.put(text, shared->config.prompt.target_language, translation.text);
+				deliver(shared, text, block.confidence, source_timestamp, false, translation.text,
+					box, image_width, image_height, batch_id);
+			});
+		}
+		catch (const std::exception &exception)
+		{
+			fail(shared, exception.what());
+		}
 	}
 
-	TranslationRequest request;
-	request.text = text;
-	{
-		std::lock_guard<std::mutex> lock(shared->state_mutex);
-		request.context = shared->context.pairs();
-	}
-	request.source_language = shared->config.prompt.source_language;
-	request.target_language = target_language;
-
-	const int64_t source_timestamp = frame.now_ms;
-	try
-	{
-		shared->backend->translate(request, [shared, text, confidence, source_timestamp](
-			TranslationResult translation) {
-			if (!translation.ok)
-			{
-				fail(shared, translation.error.empty() ? "translation failed" : translation.error);
-				return;
-			}
-			shared->last_translation_ms.store(static_cast<double>(translation.latency_ms));
-			shared->cache.put(text, shared->config.prompt.target_language, translation.text);
-			deliver(shared, text, confidence, source_timestamp, false, translation.text);
-		});
-	}
-	catch (const std::exception &exception)
-	{
-		fail(shared, exception.what());
-	}
+	if (!translated_any && shared->callbacks.onState)
+		shared->callbacks.onState("noise");
 }
 
 void TranslatorPipeline::deliver(std::shared_ptr<PipelineShared> shared, const std::string &source,
 		float confidence, int64_t source_timestamp_ms, bool from_cache,
-		const std::string &translation)
+		const std::string &translation, const Rect &source_box, int source_width,
+		int source_height, uint64_t batch_id)
 {
 	if (!shared->running.load())
 		return;
@@ -371,6 +386,10 @@ void TranslatorPipeline::deliver(std::shared_ptr<PipelineShared> shared, const s
 	item.source_timestamp_ms = source_timestamp_ms;
 	item.translated_timestamp_ms = NowMilliseconds();
 	item.from_cache = from_cache;
+	item.source_box = source_box;
+	item.source_width = source_width;
+	item.source_height = source_height;
+	item.batch_id = batch_id;
 
 	{
 		std::lock_guard<std::mutex> lock(shared->state_mutex);
