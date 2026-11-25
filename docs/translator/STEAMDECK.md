@@ -68,6 +68,19 @@ cabb8d6696f0eda54b98f4da833859abb3598abd76b06a1ccbac077e039f2235
 
 ค่าเริ่มต้น: `F11` เปิด/ปิด real-time, `F13` แปล, `F14` ซ่อน/แสดง, `F15` backlog, `F12` เปิด settings
 
+## Timing
+
+ใน settings ปรับได้:
+
+- **Hide after (s)** — ให้ overlay แปลหายอัตโนมัติหลัง N วินาที (`0` = ไม่หาย)
+- **Scan interval (ms)** — ความถี่ในการตรวจภาพ/ข้อความใหม่ (50–2000 ms)
+- **Stable time (ms)** — ข้อความต้องนิ่งนานเท่าไรก่อน OCR/แปล (100–5000 ms)
+
+## Hotkey capture
+
+กด **Set** ข้างช่อง hotkey แล้วกดคีย์ผสมที่ต้องการได้เลย
+เช่น `Ctrl+Shift+T`; `Esc` ยกเลิก, `Backspace` ล้างค่า
+
 ## Overlay placement
 
 ใน settings มีตัวเลือก **Overlay**:

@@ -68,6 +68,8 @@ if(TARGET translator_core)
 		src/translator/screenai.cpp
 		include/translator/shortcuts.h
 		src/translator/shortcuts.cpp
+		include/translator/preferences.h
+		src/translator/preferences.cpp
 	)
 endif()
 set(RESOURCE_FILES "")
@@ -180,6 +182,14 @@ if(CHIAKI_ENABLE_TESTS AND TARGET translator_core)
 		target_link_libraries(translator_shortcut_tests PRIVATE Qt6::Core Qt6::Gui)
 		enable_testing()
 		add_test(NAME translator_shortcut_tests COMMAND translator_shortcut_tests)
+
+		add_executable(translator_preference_tests
+			tests/translator/TestPreferences.cpp
+			include/translator/preferences.h
+			src/translator/preferences.cpp
+		)
+		target_include_directories(translator_preference_tests PRIVATE include)
+		add_test(NAME translator_preference_tests COMMAND translator_preference_tests)
 	endif()
 	if(TARGET Qt6::Network AND TARGET Qt6::Gui)
 		add_executable(translator_cloud_ocr_tests

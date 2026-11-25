@@ -51,6 +51,9 @@ class TranslatorManager : public QObject
 	Q_PROPERTY(QString shortcutOverlay READ shortcutOverlay NOTIFY shortcutsChanged)
 	Q_PROPERTY(QString shortcutBacklog READ shortcutBacklog NOTIFY shortcutsChanged)
 	Q_PROPERTY(QString shortcutSettings READ shortcutSettings NOTIFY shortcutsChanged)
+	Q_PROPERTY(int overlayAutoHideSeconds READ overlayAutoHideSeconds WRITE setOverlayAutoHideSeconds NOTIFY overlayAutoHideSecondsChanged)
+	Q_PROPERTY(int scanIntervalMs READ scanIntervalMs WRITE setScanIntervalMs NOTIFY timingChanged)
+	Q_PROPERTY(int stableMs READ stableMs WRITE setStableMs NOTIFY timingChanged)
 	Q_PROPERTY(QString targetLanguage READ targetLanguage WRITE setTargetLanguage NOTIFY targetLanguageChanged)
 	Q_PROPERTY(QVariantMap roiNormalized READ roiNormalized NOTIFY roiChanged)
 	Q_PROPERTY(QVariantList backlog READ backlog NOTIFY backlogChanged)
@@ -84,6 +87,9 @@ public:
 	QString shortcutOverlay() const { return shortcut_overlay_; }
 	QString shortcutBacklog() const { return shortcut_backlog_; }
 	QString shortcutSettings() const { return shortcut_settings_; }
+	int overlayAutoHideSeconds() const { return overlay_auto_hide_seconds_; }
+	int scanIntervalMs() const { return scan_interval_ms_; }
+	int stableMs() const { return stable_ms_; }
 	QString targetLanguage() const { return target_language_; }
 	QVariantMap roiNormalized() const;
 	QVariantList backlog() const { return backlog_; }
@@ -107,6 +113,10 @@ public:
 	Q_INVOKABLE void toggleEnabled();
 	Q_INVOKABLE void resetShortcuts();
 	Q_INVOKABLE void showSettings();
+	Q_INVOKABLE QString shortcutFromKey(int key, int modifiers) const;
+	void setOverlayAutoHideSeconds(int seconds);
+	void setScanIntervalMs(int milliseconds);
+	void setStableMs(int milliseconds);
 	void setTargetLanguage(const QString &language);
 
 	// Called from the decoder thread with a frame that is still owned by the
@@ -153,6 +163,8 @@ signals:
 	void ocrProviderChanged();
 	void ocrApiKeyChanged();
 	void shortcutsChanged();
+	void overlayAutoHideSecondsChanged();
+	void timingChanged();
 	void settingsRequested();
 	void targetLanguageChanged();
 	void roiChanged();
@@ -211,6 +223,9 @@ private:
 	QString shortcut_overlay_;
 	QString shortcut_backlog_;
 	QString shortcut_settings_;
+	int overlay_auto_hide_seconds_ = 6;
+	int scan_interval_ms_ = 100;
+	int stable_ms_ = 250;
 	QString target_language_;
 	QString preprocess_;
 	QString nllb_model_path_;

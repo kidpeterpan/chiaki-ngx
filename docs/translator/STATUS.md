@@ -22,6 +22,9 @@
 | Google translation | mock tests | Google Translate (free) + Google Cloud Translation ผ่าน mock HTTP; ยังไม่ทดสอบ key จริง |
 | RapidOCR PP-OCRv5 | probe | อ่าน `ゲームを続けよう` ได้ conf 1.000, ~29 ms บน M1; เลือกได้ใน QML |
 | Release 0.2.7 | CI after public | Mac DMG + AppImage (286 MB, Screen AI) build/publish สำเร็จ; แก้ QML signal ที่ทำให้ StreamView ไม่โหลด |
+| Auto-hide overlay | QML smoke | Timer ซ่อนคำแปลตาม `overlayAutoHideSeconds`; 0 = ปิด |
+| Scan/stable timing | preference tests | clamp 50–2000 ms / 100–5000 ms; pipeline ใช้ค่าที่ตั้ง |
+| Hotkey capture | shortcut tests + QML | กด Set แล้วกดคีย์ผสม; Esc/Backspace; auto-save |
 | In-place overlay | QML smoke | overlay วางตาม ROI (normalized) แทน bottom center; มีตัวเลือก bottom center |
 | Real-time toggle | Live button + F11 | menu/overlay เปิด-ปิด pipeline ทันที; QML smoke ผ่าน |
 | Hotkeys | Qt shortcut tests | parse/validate/conflict ผ่าน; F13/F14/F15/F12 defaults, combination และ empty-disable |

@@ -32,6 +32,13 @@ jobs:
           g++ -std=c++17 -fPIC -I gui/include             gui/src/translator/shortcuts.cpp gui/tests/translator/TestShortcuts.cpp             $(pkg-config --cflags --libs Qt6Gui Qt6Core)             -o /tmp/translator_shortcut_tests
           /tmp/translator_shortcut_tests
 
+      - name: Timing preference tests
+        run: |
+          g++ -std=c++17 -I gui/include \
+            gui/src/translator/preferences.cpp gui/tests/translator/TestPreferences.cpp \
+            -o /tmp/translator_preference_tests
+          /tmp/translator_preference_tests
+
   core-macos-onnx:
     name: core + OCR (macOS)
     runs-on: macos-15

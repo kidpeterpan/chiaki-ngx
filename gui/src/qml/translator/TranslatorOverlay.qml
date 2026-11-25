@@ -17,7 +17,52 @@ Item {
 
     property bool settingsOpen: false
     property bool dictionaryOpen: false
+    property bool autoHidden: false
+    property string captureAction: ""
     readonly property bool menuOpen: settingsOpen || Translator.roiSelectionActive || Translator.backlogVisible || dictionaryOpen
+
+    function saveHotkeys() {
+        const ok = Translator.setShortcuts(shortcutEnableField.text, shortcutTranslateField.text,
+            shortcutOverlayField.text, shortcutBacklogField.text, shortcutSettingsField.text)
+        if (ok) {
+            shortcutEnableField.text = Translator.shortcutEnable
+            shortcutTranslateField.text = Translator.shortcutTranslate
+            shortcutOverlayField.text = Translator.shortcutOverlay
+            shortcutBacklogField.text = Translator.shortcutBacklog
+            shortcutSettingsField.text = Translator.shortcutSettings
+        }
+        return ok
+    }
+
+    function assignCapturedShortcut(sequence) {
+        if (captureAction === "enable")
+            shortcutEnableField.text = sequence
+        else if (captureAction === "translate")
+            shortcutTranslateField.text = sequence
+        else if (captureAction === "overlay")
+            shortcutOverlayField.text = sequence
+        else if (captureAction === "backlog")
+            shortcutBacklogField.text = sequence
+        else if (captureAction === "settings")
+            shortcutSettingsField.text = sequence
+        captureAction = ""
+        saveHotkeys()
+    }
+
+    function clearCapturedShortcut() {
+        if (captureAction === "enable")
+            shortcutEnableField.text = ""
+        else if (captureAction === "translate")
+            shortcutTranslateField.text = ""
+        else if (captureAction === "overlay")
+            shortcutOverlayField.text = ""
+        else if (captureAction === "backlog")
+            shortcutBacklogField.text = ""
+        else if (captureAction === "settings")
+            shortcutSettingsField.text = ""
+        captureAction = ""
+        saveHotkeys()
+    }
 
     onMenuOpenChanged: {
         if (menuOpen)
@@ -55,6 +100,38 @@ Item {
     Connections {
         target: Translator
         function onSettingsRequested() { root.settingsOpen = true }
+        function onOverlayTextChanged() {
+            if (Translator.overlayAutoHideSeconds <= 0)
+                return
+            root.autoHidden = false
+            overlayHideTimer.restart()
+        }
+        function onOverlayAutoHideSecondsChanged() {
+            if (Translator.overlayAutoHideSeconds <= 0)
+                overlayHideTimer.stop()
+            else if (Translator.overlayVisible && Translator.overlayText.length > 0)
+                overlayHideTimer.restart()
+        }
+        function onOverlayVisibleChanged() {
+            if (Translator.overlayVisible) {
+                root.autoHidden = false
+                if (Translator.overlayAutoHideSeconds > 0 && Translator.overlayText.length > 0)
+                    overlayHideTimer.restart()
+            } else {
+                overlayHideTimer.stop()
+                root.autoHidden = false
+            }
+        }
+    }
+
+    Timer {
+        id: overlayHideTimer
+        interval: Math.max(1, Translator.overlayAutoHideSeconds * 1000)
+        repeat: false
+        onTriggered: {
+            if (Translator.enabled && Translator.overlayVisible && Translator.overlayText.length > 0)
+                root.autoHidden = true
+        }
     }
 
     Connections {
@@ -204,7 +281,7 @@ Item {
         border.color: "#33ffffff"
         border.width: 1
         visible: Chiaki.session !== null && Translator.enabled && Translator.overlayVisible &&
-                 Translator.overlayText.length > 0
+                 !root.autoHidden && Translator.overlayText.length > 0
 
         onVisibleChanged: root.updateSubtitleTouchRegion()
         onXChanged: root.updateSubtitleTouchRegion()
@@ -618,6 +695,41 @@ Item {
             RowLayout {
                 width: parent.width
                 spacing: 8
+                Text { text: "Hide after (s)"; color: "#dddddd"; font.pixelSize: 13 }
+                SpinBox {
+                    from: 0
+                    to: 60
+                    value: Translator.overlayAutoHideSeconds
+                    onValueModified: Translator.overlayAutoHideSeconds = value
+                }
+                Text { text: "Scan interval (ms)"; color: "#dddddd"; font.pixelSize: 13 }
+                SpinBox {
+                    from: 50
+                    to: 2000
+                    stepSize: 50
+                    value: Translator.scanIntervalMs
+                    onValueModified: Translator.scanIntervalMs = value
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
+                Text { text: "Stable time (ms)"; color: "#dddddd"; font.pixelSize: 13 }
+                SpinBox {
+                    from: 100
+                    to: 5000
+                    stepSize: 50
+                    value: Translator.stableMs
+                    onValueModified: Translator.stableMs = value
+                }
+                Text { text: "0 = overlay never auto-hides"; color: "#99ffffff"; font.pixelSize: 11 }
+                Item { Layout.fillWidth: true }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: 8
                 Text { text: "ROI preset"; color: "#dddddd"; font.pixelSize: 14 }
                 TextField {
                     id: presetField
@@ -666,6 +778,7 @@ Item {
                     placeholderText: "F11"
                     text: Translator.shortcutEnable
                 }
+                Button { text: "Set"; onClicked: { root.captureAction = "enable"; shortcutCapture.forceActiveFocus() } }
                 Text { text: "Translate"; color: "#dddddd"; font.pixelSize: 13 }
                 TextField {
                     id: shortcutTranslateField
@@ -673,6 +786,7 @@ Item {
                     placeholderText: "F13"
                     text: Translator.shortcutTranslate
                 }
+                Button { text: "Set"; onClicked: { root.captureAction = "translate"; shortcutCapture.forceActiveFocus() } }
             }
 
             RowLayout {
@@ -685,6 +799,7 @@ Item {
                     placeholderText: "F14"
                     text: Translator.shortcutOverlay
                 }
+                Button { text: "Set"; onClicked: { root.captureAction = "overlay"; shortcutCapture.forceActiveFocus() } }
                 Text { text: "Backlog"; color: "#dddddd"; font.pixelSize: 13 }
                 TextField {
                     id: shortcutBacklogField
@@ -692,6 +807,7 @@ Item {
                     placeholderText: "F15"
                     text: Translator.shortcutBacklog
                 }
+                Button { text: "Set"; onClicked: { root.captureAction = "backlog"; shortcutCapture.forceActiveFocus() } }
             }
 
             RowLayout {
@@ -704,6 +820,7 @@ Item {
                     placeholderText: "F12"
                     text: Translator.shortcutSettings
                 }
+                Button { text: "Set"; onClicked: { root.captureAction = "settings"; shortcutCapture.forceActiveFocus() } }
                 Item { Layout.fillWidth: true }
             }
 
@@ -712,17 +829,7 @@ Item {
                 spacing: 8
                 Button {
                     text: "Save hotkeys"
-                    onClicked: {
-                        if (Translator.setShortcuts(shortcutEnableField.text,
-                                shortcutTranslateField.text, shortcutOverlayField.text,
-                                shortcutBacklogField.text, shortcutSettingsField.text)) {
-                            shortcutEnableField.text = Translator.shortcutEnable
-                            shortcutTranslateField.text = Translator.shortcutTranslate
-                            shortcutOverlayField.text = Translator.shortcutOverlay
-                            shortcutBacklogField.text = Translator.shortcutBacklog
-                            shortcutSettingsField.text = Translator.shortcutSettings
-                        }
-                    }
+                    onClicked: root.saveHotkeys()
                 }
                 Button {
                     text: "Reset hotkeys"
@@ -766,6 +873,76 @@ Item {
                 }
             }
             }
+        }
+    }
+
+
+    // Click "Set" then press a key combination instead of typing it.
+    Item {
+        id: shortcutCapture
+        anchors.fill: parent
+        z: 20000
+        visible: root.captureAction.length > 0
+        focus: visible
+
+        Rectangle {
+            anchors.fill: parent
+            color: "#aa000000"
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(parent.width * 0.7, 560)
+            height: 150
+            radius: 12
+            color: "#f00e1014"
+            border.color: "#88ffffff"
+
+            Column {
+                anchors.centerIn: parent
+                spacing: 12
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Press the new shortcut"
+                    color: "white"
+                    font.pixelSize: 22
+                    font.bold: true
+                }
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Use modifiers such as Ctrl+Shift+T · Esc cancels · Backspace clears"
+                    color: "#bbbbbb"
+                    font.pixelSize: 12
+                }
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {}
+        }
+
+        Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Escape) {
+                root.captureAction = ""
+                event.accepted = true
+                return
+            }
+            if (event.key === Qt.Key_Backspace || event.key === Qt.Key_Delete) {
+                root.clearCapturedShortcut()
+                event.accepted = true
+                return
+            }
+            const sequence = Translator.shortcutFromKey(event.key, event.modifiers)
+            if (sequence.length > 0) {
+                root.assignCapturedShortcut(sequence)
+                event.accepted = true
+            }
+        }
+
+        onVisibleChanged: {
+            if (visible)
+                forceActiveFocus()
         }
     }
 

@@ -15,5 +15,7 @@ bool shortcutsConflict(const QString &left, const QString &right);
 // Empty when every entry is valid and non-conflicting; otherwise a user-facing
 // message. Empty entries mean "disabled" and do not conflict.
 QString shortcutSetError(const QStringList &values);
+// QML key-capture helper: turns one key press into a portable sequence.
+QString shortcutFromKey(int key, int modifiers);
 
 } // namespace translator

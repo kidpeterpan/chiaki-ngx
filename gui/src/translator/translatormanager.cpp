@@ -5,6 +5,7 @@
 #include "translator/cloudocr.h"
 #include "translator/screenai.h"
 #include "translator/shortcuts.h"
+#include "translator/preferences.h"
 
 #include <trans/DictLookup.hpp>
 #include <trans/NllbBackend.hpp>
@@ -105,6 +106,12 @@ TranslatorManager::TranslatorManager(QObject *parent) : QObject(parent)
 	shortcut_overlay_ = load_shortcut("translator/shortcut/overlay", QStringLiteral("F14"));
 	shortcut_backlog_ = load_shortcut("translator/shortcut/backlog", QStringLiteral("F15"));
 	shortcut_settings_ = load_shortcut("translator/shortcut/settings", QStringLiteral("F12"));
+	overlay_auto_hide_seconds_ = translator::clampOverlayAutoHideSeconds(
+		settings.value(QStringLiteral("translator/overlay_auto_hide_seconds"), 6).toInt());
+	scan_interval_ms_ = translator::clampScanIntervalMs(
+		settings.value(QStringLiteral("translator/scan_interval_ms"), 100).toInt());
+	stable_ms_ = translator::clampStableMs(
+		settings.value(QStringLiteral("translator/stable_ms"), 250).toInt());
 	target_language_ = settings.value(QStringLiteral("translator/target"), QStringLiteral("th")).toString();
 	preprocess_ = settings.value(QStringLiteral("translator/preprocess"), QStringLiteral("contrast")).toString();
 	nllb_model_path_ = settings.value(QStringLiteral("translator/nllb_model"),
@@ -360,6 +367,45 @@ void TranslatorManager::toggleEnabled()
 	setEnabled(!enabled_.load());
 }
 
+void TranslatorManager::setOverlayAutoHideSeconds(int seconds)
+{
+	const int clamped = translator::clampOverlayAutoHideSeconds(seconds);
+	if (overlay_auto_hide_seconds_ == clamped)
+		return;
+	overlay_auto_hide_seconds_ = clamped;
+	QSettings().setValue(QStringLiteral("translator/overlay_auto_hide_seconds"), clamped);
+	emit overlayAutoHideSecondsChanged();
+}
+
+void TranslatorManager::setScanIntervalMs(int milliseconds)
+{
+	const int clamped = translator::clampScanIntervalMs(milliseconds);
+	if (scan_interval_ms_ == clamped)
+		return;
+	scan_interval_ms_ = clamped;
+	QSettings().setValue(QStringLiteral("translator/scan_interval_ms"), clamped);
+	emit timingChanged();
+	if (prepared_.load())
+		restartPipeline();
+}
+
+void TranslatorManager::setStableMs(int milliseconds)
+{
+	const int clamped = translator::clampStableMs(milliseconds);
+	if (stable_ms_ == clamped)
+		return;
+	stable_ms_ = clamped;
+	QSettings().setValue(QStringLiteral("translator/stable_ms"), clamped);
+	emit timingChanged();
+	if (prepared_.load())
+		restartPipeline();
+}
+
+QString TranslatorManager::shortcutFromKey(int key, int modifiers) const
+{
+	return translator::shortcutFromKey(key, modifiers);
+}
+
 void TranslatorManager::showSettings()
 {
 	emit settingsRequested();
@@ -554,8 +600,8 @@ bool TranslatorManager::ensurePipeline(const trans::Rect &roi, QString *error)
 
 	trans::PipelineConfig config;
 	config.frame.roi = roi;
-	config.frame.sample_interval_ms = 100;
-	config.frame.stable_ms = 250;
+	config.frame.sample_interval_ms = scan_interval_ms_;
+	config.frame.stable_ms = stable_ms_;
 	config.frame.still_changed_ratio = 0.002;
 	config.frame.still_mean_abs_delta = 1.0;
 	config.frame.pixel_delta_threshold = 14;

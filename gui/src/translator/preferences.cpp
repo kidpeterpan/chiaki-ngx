@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+#include "translator/preferences.h"
+
+
+namespace translator {
+
+int clampOverlayAutoHideSeconds(int seconds)
+{
+	return seconds < 0 ? 0 : (seconds > 60 ? 60 : seconds);
+}
+
+int clampScanIntervalMs(int milliseconds)
+{
+	return milliseconds < 50 ? 50 : (milliseconds > 2000 ? 2000 : milliseconds);
+}
+
+int clampStableMs(int milliseconds)
+{
+	return milliseconds < 100 ? 100 : (milliseconds > 5000 ? 5000 : milliseconds);
+}
+
+} // namespace translator

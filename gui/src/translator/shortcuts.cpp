@@ -2,6 +2,7 @@
 #include "translator/shortcuts.h"
 
 #include <QKeySequence>
+#include <Qt>
 
 namespace translator {
 
@@ -26,6 +27,17 @@ bool shortcutsConflict(const QString &left, const QString &right)
 	const QString a = normalizeShortcut(left);
 	const QString b = normalizeShortcut(right);
 	return !a.isEmpty() && a == b;
+}
+
+QString shortcutFromKey(int key, int modifiers)
+{
+	if (key <= 0 || key == Qt::Key_Control || key == Qt::Key_Shift ||
+			key == Qt::Key_Alt || key == Qt::Key_Meta)
+		return {};
+	const QKeySequence sequence(key | modifiers);
+	if (sequence.isEmpty())
+		return {};
+	return sequence.toString(QKeySequence::PortableText);
 }
 
 QString shortcutSetError(const QStringList &values)

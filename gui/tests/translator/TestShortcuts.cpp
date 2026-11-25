@@ -2,6 +2,7 @@
 #include "translator/shortcuts.h"
 
 #include <QCoreApplication>
+#include <Qt>
 
 #include <cstdio>
 
@@ -51,6 +52,13 @@ int main(int argc, char **argv)
 		return Fail("different shortcuts flagged as conflict");
 	if (translator::shortcutsConflict("", ""))
 		return Fail("empty shortcuts flagged as conflict");
+
+	if (translator::shortcutFromKey(Qt::Key_T, Qt::ControlModifier) != QStringLiteral("Ctrl+T"))
+		return Fail("key capture did not build Ctrl+T");
+	if (translator::shortcutFromKey(Qt::Key_F11, Qt::NoModifier) != QStringLiteral("F11"))
+		return Fail("key capture did not build F11");
+	if (!translator::shortcutFromKey(Qt::Key_Control, Qt::ControlModifier).isEmpty())
+		return Fail("modifier-only key capture was accepted");
 
 	if (!translator::shortcutSetError({"F11", "F13", "F14", "F15", "F12"}).isEmpty())
 		return Fail("valid shortcut set was rejected");
