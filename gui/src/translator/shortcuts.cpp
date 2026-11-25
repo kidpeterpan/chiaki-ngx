@@ -2,15 +2,19 @@
 #include "translator/shortcuts.h"
 
 #include <QKeySequence>
+#include <QRegularExpression>
 #include <Qt>
 
 namespace translator {
 
 QString normalizeShortcut(const QString &text)
 {
-	const QString trimmed = text.trimmed();
+	QString trimmed = text.trimmed();
 	if (trimmed.isEmpty())
 		return {};
+	// Qt 6.4 does not accept spaces around '+'; normalize them before parsing
+	// so Linux/CI and macOS behave the same.
+	trimmed.replace(QRegularExpression(QStringLiteral("\\s*\\+\\s*")), QStringLiteral("+"));
 	const QKeySequence sequence = QKeySequence::fromString(trimmed, QKeySequence::PortableText);
 	if (sequence.isEmpty())
 		return {};
