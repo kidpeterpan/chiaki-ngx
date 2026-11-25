@@ -25,7 +25,7 @@ jobs:
         with:
           submodules: recursive
 
-      # Package list follows .github/workflows/build-macos.yml, with the unversioned qt
+      # Package list follows scripts/translator/build-macos.sh, with the unversioned qt
       # formula that scripts/translator/build-macos.sh preflights. openssl@4 is not
       # installed (the repo's CI unlinks it; the harness assumes it is absent).
       - name: Install build and verification tools
