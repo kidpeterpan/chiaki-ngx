@@ -14,10 +14,17 @@
 
 **chiaki-ngx** is a fork of the [upstream Chiaki Remote Play project](https://github.com/chiaki-ng/chiaki-ng), the
 open-source PlayStation 4/5 Remote Play client. It keeps the upstream client and adds an
-optional, in-viewport Japanese subtitle translator with multiple OCR engines and translation
-providers. Translate Japanese subtitles into Thai or English.
+optional, in-viewport translator for game text with multiple OCR engines and translation
+providers. Source-language coverage depends on the selected OCR engine; the supplied demo shows
+English dialogue translated into Thai. The in-app output choices are Thai and English.
 
 Website: [chiaki-ngx](https://kidpeterpan.github.io/chiaki-ngx/)
+
+## Screenshots
+
+![Game dialogue translated into Thai in the Chiaki-ngx Remote Play overlay](screenshots/translator-overlay-thai.jpg)
+
+![Translator settings showing Chrome Screen AI, Google Translate, and Thai output selected](screenshots/translator-settings-thai.jpg)
 
 ## Extended features
 
@@ -25,7 +32,7 @@ Website: [chiaki-ngx](https://kidpeterpan.github.io/chiaki-ngx/)
 | --- | --- |
 | OCR | PaddleOCR PP-OCRv3, RapidOCR PP-OCRv5, Google Cloud Vision, OCR.space, Gemini Vision, Chrome Screen AI (Linux x86_64) |
 | Translation | Google Translate (free, the default: no API key needed), Gemini, Google Cloud Translation, DeepL, OpenAI-compatible/OpenCode Go, and offline NLLB-200 |
-| Language flow | Japanese subtitles → Thai or English |
+| Language flow | In-game text → Thai or English; source coverage varies by OCR provider |
 | Context | Rolling 3-line dialogue context, LRU translation cache, Levenshtein duplicate suppression |
 | Dictionary | Offline JMdict SQLite lookup with deinflection and tap-to-define |
 | Overlay | Box-accurate multi-block in-place overlay, bottom fallback, configurable auto-hide, font family and size, original line Show/Hide (Hide gives the translation the whole box), box opacity 20–100% |
@@ -34,6 +41,8 @@ Website: [chiaki-ngx](https://kidpeterpan.github.io/chiaki-ngx/)
 | Controls | Steam Deck L4/R4/L5/R5, touch routing, a Live switch (LIVE: translates on its own; MANUAL: only L4 / Translate now; OFF) on the badge, F11 and the stream menu, remappable hotkeys with key capture |
 | Packaging | Steam Deck / Linux x86_64 AppImage with curl 8.23 on a static OpenSSL 3, plus upstream Flatpak/Windows build paths |
 | Quality | translator-core, cloud backend, cloud OCR, shortcut, preference, overlay geometry and controller-driven QML settings tests, run by `scripts/verify.sh --full` (see [Verification](#verification)); a Chrome Screen AI restart test joins them on Linux once the library is fetched |
+
+Google's [ChromeOS ML OCR documentation](https://developers.google.com/chromeos/app-development/news/frictionless-pdf-accessibility-with-ml-and-ocr) lists 77 languages for the upstream OCR feature. chiaki-ngx has not validated all 77 on game footage; source coverage varies by provider.
 
 The translator is opt-in and disabled by default. Without it, chiaki-ngx behaves like the
 upstream client.
